@@ -20,8 +20,7 @@ type Product = {
   description_en: string;
   price: number;
   discount_price: number | null;
-  base_price?: number;
-  base_discount_price?: number | null;
+  cost_price?: number;
 
   stock_qty: number;
   is_featured: boolean;
@@ -38,6 +37,7 @@ const HEADERS = [
   "description_ar",
   "description_en",
   "price",
+  "cost_price",
   "discount_price",
   "stock_qty",
   "is_featured",
@@ -53,6 +53,7 @@ const HEADERS_AR: Record<(typeof HEADERS)[number], string> = {
   description_ar: "الوصف بالعربية",
   description_en: "الوصف بالإنكليزية",
   price: "السعر",
+  cost_price: "السعر الأساس (الكلفة)",
   discount_price: "سعر الخصم",
   stock_qty: "الكمية",
   is_featured: "مميز (نعم/لا)",
@@ -109,6 +110,7 @@ export function ProductsExcel({
       description_ar: "وصف مختصر",
       description_en: "Short description",
       price: 250000,
+      cost_price: 200000,
       discount_price: "",
       stock_qty: 10,
       is_featured: "لا",
@@ -135,8 +137,9 @@ export function ProductsExcel({
       name_en: p.name_en,
       description_ar: p.description_ar,
       description_en: p.description_en,
-      price: p.base_price ?? p.price,
-      discount_price: (p.base_discount_price ?? p.discount_price) ?? "",
+      price: p.price,
+      cost_price: p.cost_price ?? 0,
+      discount_price: p.discount_price ?? "",
 
       stock_qty: p.stock_qty,
       is_featured: p.is_featured ? "نعم" : "لا",
@@ -187,6 +190,7 @@ export function ProductsExcel({
           description_ar: String(row["description_ar"] ?? "").trim(),
           description_en: String(row["description_en"] ?? "").trim(),
           price: num(row["price"]),
+          cost_price: num(row["cost_price"]),
           discount_price: discount ? num(discount) : null,
           stock_qty: num(row["stock_qty"]),
           is_featured: truthy(row["is_featured"]),

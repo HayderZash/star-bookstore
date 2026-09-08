@@ -5,7 +5,6 @@
  * logic can run inside a TanStack server route (Lovable hosting) and inside a
  * Netlify Function.
  */
-import { applyPricing, parsePriceTiers } from "./format";
 
 export type AiConfig = Record<string, string>;
 
@@ -54,14 +53,6 @@ export async function searchProducts(
   const words = keywords(query);
   if (!words.length) return [];
 
-  const settings = await rest<{ key: string; value: string }[]>(
-    supabaseUrl,
-    supabaseKey,
-    `store_settings?select=key,value&key=in.(price_tiers,price_markup_percent)`,
-  ).catch(() => []);
-  const map = Object.fromEntries(settings.map((r) => [r.key, r.value]));
-  const tiers = parsePriceTiers(map["price_tiers"], Number(map["price_markup_percent"] ?? 0) || 0);
-
   const seen = new Map<string, AiProduct>();
   for (const word of words) {
     const enc = encodeURIComponent(`%${word}%`);
@@ -91,7 +82,7 @@ export async function searchProducts(
         id: p.id,
         sku: p.sku,
         name: p.name_ar || p.name_en,
-        price: applyPricing(base, tiers),
+        price: base,
         image_url: p.image_url,
         stock_qty: Number(p.stock_qty ?? 0),
         url: `${origin.replace(/\/$/, "")}/product/${p.id}`,

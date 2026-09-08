@@ -1,7 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
-import { applyPricing, parsePriceTiers } from "@/lib/format";
 
 
 export type Product = {
@@ -21,9 +20,8 @@ export type Product = {
   images: string[];
   deal_ends_at: string | null;
   created_at: string;
-  /** Original prices before the store-wide markup (admin editing uses these). */
-  base_price: number;
-  base_discount_price: number | null;
+  /** Cost price (admin only, never shown to customers). */
+  cost_price: number;
 };
 
 
@@ -48,23 +46,13 @@ export type Category = {
 };
 
 const PRODUCT_COLS =
-  "id, sku, name_ar, name_en, description_ar, description_en, price, discount_price, category_id, image_url, catalog_pdf_url, stock_qty, is_featured, images, deal_ends_at, created_at";
+  "id, sku, name_ar, name_en, description_ar, description_en, price, discount_price, cost_price, category_id, image_url, catalog_pdf_url, stock_qty, is_featured, images, deal_ends_at, created_at";
 
 const PAGE = 1000;
 
 export const productsQuery = queryOptions({
   queryKey: ["products"],
   queryFn: async (): Promise<Product[]> => {
-    const { data: settingRows } = await supabase
-      .from("store_settings")
-      .select("key, value")
-      .in("key", ["price_tiers", "price_markup_percent"]);
-    const map = Object.fromEntries((settingRows ?? []).map((r) => [r.key, r.value]));
-    const tiers = parsePriceTiers(
-      map["price_tiers"],
-      Number(map["price_markup_percent"] ?? 0) || 0,
-    );
-
     // PostgREST caps a single response at 1000 rows — page through everything.
     const all: Product[] = [];
     for (let from = 0; ; from += PAGE) {
@@ -79,11 +67,9 @@ export const productsQuery = queryOptions({
       all.push(
         ...rows.map((p) => ({
           ...p,
-          base_price: Number(p.price) || 0,
-          base_discount_price: p.discount_price === null ? null : Number(p.discount_price),
-          price: applyPricing(Number(p.price) || 0, tiers),
-          discount_price:
-            p.discount_price === null ? null : applyPricing(Number(p.discount_price), tiers),
+          price: Number(p.price) || 0,
+          cost_price: Number(p.cost_price) || 0,
+          discount_price: p.discount_price === null ? null : Number(p.discount_price),
         })),
       );
       if (rows.length < PAGE) break;

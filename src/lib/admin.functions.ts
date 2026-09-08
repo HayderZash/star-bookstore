@@ -161,20 +161,18 @@ export const orderProfit = createServerFn({ method: "POST" })
 
     const { data: items, error } = await supabaseAdmin
       .from("order_items")
-      .select("id, product_id, product_name, quantity, unit_price, is_unavailable")
+      .select("id, product_id, product_name, quantity, unit_price, cost_price, is_unavailable")
       .eq("order_id", data.order_id);
     if (error) throw new Error(error.message);
 
     const ids = (items ?? []).map((i) => i.product_id).filter(Boolean) as string[];
     const { data: products } = ids.length
-      ? await supabaseAdmin.from("products").select("id, price, discount_price").in("id", ids)
-      : { data: [] as { id: string; price: number; discount_price: number | null }[] };
+      ? await supabaseAdmin.from("products").select("id, cost_price").in("id", ids)
+      : { data: [] as { id: string; cost_price: number }[] };
     const baseOf = new Map(
-      ((products ?? []) as { id: string; price: number; discount_price: number | null }[]).map((p) => {
-        const dp = p.discount_price == null ? 0 : Number(p.discount_price);
-        const price = Number(p.price) || 0;
-        return [p.id, dp > 0 && dp < price ? dp : price] as const;
-      }),
+      ((products ?? []) as { id: string; cost_price: number }[]).map(
+        (p) => [p.id, Number(p.cost_price) || 0] as const,
+      ),
     );
 
     const lines = (items ?? [])
@@ -182,7 +180,7 @@ export const orderProfit = createServerFn({ method: "POST" })
       .map((i) => {
         const qty = Number(i.quantity) || 0;
         const sell = Number(i.unit_price) || 0;
-        const base = baseOf.get(String(i.product_id)) ?? 0;
+        const base = Number(i.cost_price) || baseOf.get(String(i.product_id)) || 0;
         const profitUnit = sell - base;
         return {
           id: String(i.id),
@@ -227,21 +225,17 @@ export const ordersProfit = createServerFn({ method: "POST" })
 
     const { data: items, error } = await supabaseAdmin
       .from("order_items")
-      .select("id, order_id, product_id, product_name, quantity, unit_price, is_unavailable")
+      .select("id, order_id, product_id, product_name, quantity, unit_price, cost_price, is_unavailable")
       .in("order_id", data.order_ids);
     if (error) throw new Error(error.message);
 
     const ids = (items ?? []).map((i) => i.product_id).filter(Boolean) as string[];
     const { data: products } = ids.length
-      ? await supabaseAdmin.from("products").select("id, price, discount_price").in("id", ids)
-      : { data: [] as { id: string; price: number; discount_price: number | null }[] };
+      ? await supabaseAdmin.from("products").select("id, cost_price").in("id", ids)
+      : { data: [] as { id: string; cost_price: number }[] };
     const baseOf = new Map(
-      ((products ?? []) as { id: string; price: number; discount_price: number | null }[]).map(
-        (p) => {
-          const dp = p.discount_price == null ? 0 : Number(p.discount_price);
-          const price = Number(p.price) || 0;
-          return [p.id, dp > 0 && dp < price ? dp : price] as const;
-        },
+      ((products ?? []) as { id: string; cost_price: number }[]).map(
+        (p) => [p.id, Number(p.cost_price) || 0] as const,
       ),
     );
 
@@ -251,7 +245,7 @@ export const ordersProfit = createServerFn({ method: "POST" })
         .map((i) => {
           const qty = Number(i.quantity) || 0;
           const sell = Number(i.unit_price) || 0;
-          const base = baseOf.get(String(i.product_id)) ?? 0;
+          const base = Number(i.cost_price) || baseOf.get(String(i.product_id)) || 0;
           return {
             name: String(i.product_name),
             quantity: qty,

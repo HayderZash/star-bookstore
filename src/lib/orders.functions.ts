@@ -35,22 +35,6 @@ const placeOrderSchema = z.object({
 
 const couponSchema = z.object({ code: z.string().trim().min(1).max(60), subtotal: z.number().min(0) });
 
-import { applyPricing, parsePriceTiers, type PriceTier } from "@/lib/format";
-
-/** Reads the tiered pricing rules stored in store_settings. */
-async function getPricingTiers(supabase: {
-  from: (t: string) => any;
-}): Promise<PriceTier[]> {
-  const { data } = await supabase
-    .from("store_settings")
-    .select("key, value")
-    .in("key", ["price_tiers", "price_markup_percent"]);
-  const map = Object.fromEntries(
-    ((data ?? []) as { key: string; value: string }[]).map((r) => [r.key, r.value]),
-  );
-  return parsePriceTiers(map["price_tiers"], Number(map["price_markup_percent"] ?? 0) || 0);
-}
-
 
 /** A coupon is unusable once its expiry moment has passed. */
 function isExpired(expiresAt: string | null | undefined) {
@@ -98,12 +82,10 @@ export const placeOrder = createServerFn({ method: "POST" })
     const ids = data.items.map((i) => i.product_id);
     const { data: products, error: prodErr } = await supabase
       .from("products")
-      .select("id, name_ar, name_en, price, discount_price, stock_qty")
+      .select("id, name_ar, name_en, price, discount_price, cost_price, stock_qty")
       .in("id", ids);
     if (prodErr) throw new Error(prodErr.message);
     if (!products?.length) throw new Error("No valid products in the order");
-
-    const tiers = await getPricingTiers(supabase);
 
     const variantIds = data.items.flatMap((i) => (i.options ?? []).map((o) => o.variant_id));
     const variants = variantIds.length
@@ -130,15 +112,16 @@ export const placeOrder = createServerFn({ method: "POST" })
         const optionLabel = picked
           .map((v) => `${v.group_ar}: ${v.value_ar}`)
           .join("، ");
-        const unit = applyPricing(base, tiers) + delta;
+        const unit = base + delta;
 
-        const listUnit = applyPricing(Number(p.price), tiers) + delta;
+        const listUnit = Number(p.price) + delta;
         return {
           product_id: p.id,
           product_name: `${p.name_ar || p.name_en}${optionLabel ? ` (${optionLabel})` : ""}`,
           quantity: line.quantity,
           unit_price: unit,
           list_price: listUnit,
+          cost_price: Number((p as { cost_price?: number }).cost_price ?? 0) || 0,
         };
       })
       .filter((l): l is NonNullable<typeof l> => l !== null);
@@ -211,6 +194,7 @@ export const placeOrder = createServerFn({ method: "POST" })
           product_name: l.product_name,
           quantity: l.quantity,
           unit_price: l.unit_price,
+          cost_price: l.cost_price,
         })),
       );
     if (itemsErr) throw new Error(itemsErr.message);
@@ -454,7 +438,7 @@ export const addOrderItem = createServerFn({ method: "POST" })
       Number(product.discount_price) < Number(product.price)
         ? Number(product.discount_price)
         : Number(product.price);
-    const unit = applyPricing(baseUnit, await getPricingTiers(supabase));
+    const unit = baseUnit;
 
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
