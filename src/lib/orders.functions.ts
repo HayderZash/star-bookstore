@@ -263,7 +263,14 @@ type NotifyPayload = {
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
 
+/** Direct Bot API when a bot token is configured, otherwise the connector gateway. */
+function tgBase() {
+  const token = process.env["TELEGRAM_BOT_TOKEN"];
+  return token ? `https://api.telegram.org/bot${token}` : GATEWAY;
+}
+
 function tgHeaders(lovableKey: string, telegramKey: string) {
+  if (process.env["TELEGRAM_BOT_TOKEN"]) return { "Content-Type": "application/json" };
   return {
     Authorization: `Bearer ${lovableKey}`,
     "X-Connection-Api-Key": telegramKey,
@@ -280,7 +287,7 @@ async function resolveChatId(
   telegramKey: string,
   username: string,
 ): Promise<string | null> {
-  const res = await fetch(`${GATEWAY}/getUpdates`, {
+  const res = await fetch(`${tgBase()}/getUpdates`, {
     method: "POST",
     headers: tgHeaders(lovableKey, telegramKey),
     body: JSON.stringify({ limit: 100 }),
@@ -312,9 +319,10 @@ async function sendTelegramText(
   text: string,
 ): Promise<void> {
   try {
-    const lovableKey = process.env["LOVABLE_API_KEY"];
-    const telegramKey = process.env["TELEGRAM_API_KEY"];
-    if (!lovableKey || !telegramKey) return;
+    const botToken = process.env["TELEGRAM_BOT_TOKEN"];
+    const lovableKey = process.env["LOVABLE_API_KEY"] ?? "";
+    const telegramKey = process.env["TELEGRAM_API_KEY"] ?? "";
+    if (!botToken && (!lovableKey || !telegramKey)) return;
 
     const { data: settings } = await supabase
       .from("store_settings")
@@ -334,7 +342,7 @@ async function sendTelegramText(
     }
     if (!chatId) return;
 
-    const res = await fetch(`${GATEWAY}/sendMessage`, {
+    const res = await fetch(`${tgBase()}/sendMessage`, {
       method: "POST",
       headers: tgHeaders(lovableKey, telegramKey),
       body: JSON.stringify({ chat_id: chatId, text }),
