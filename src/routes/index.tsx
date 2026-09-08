@@ -117,31 +117,85 @@ function Home() {
     <div>
       <h1 className="sr-only">مكتبة النجم — كتب وقرطاسية ولوازم مدرسية</h1>
 
+      <section className="animate-rise grid gap-3 md:grid-cols-3">
+        <div className="gradient-hero relative overflow-hidden rounded-3xl p-6 text-primary-foreground shadow-[var(--shadow-lift)] md:col-span-2 md:p-8">
+          <span className="pointer-events-none absolute -top-16 -end-10 size-48 rounded-full bg-brand-yellow/25 blur-2xl" />
+          <span className="pointer-events-none absolute -bottom-20 -start-10 size-56 rounded-full bg-brand-blue/30 blur-2xl" />
+          <img
+            src={najmLogo.url}
+            alt=""
+            aria-hidden
+            className="animate-float absolute end-6 bottom-4 hidden w-24 opacity-90 sm:block"
+          />
+          <p className="text-xs font-semibold tracking-wide opacity-80">
+            {lang === "ar" ? "أهلاً بك في" : "Welcome to"}
+          </p>
+          <h2 className="mt-1 text-3xl font-extrabold md:text-4xl">
+            <span className="text-shine">مكتبة النجم</span>
+          </h2>
+          <p className="mt-3 max-w-md text-sm opacity-90">
+            {lang === "ar"
+              ? "كتب وقرطاسية ولوازم مدرسية ومكتبية بأسعار مناسبة، مع توصيل لكل محافظات العراق."
+              : "Books, stationery and school supplies, delivered across Iraq."}
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              to="/categories"
+              className="rounded-full bg-background px-5 py-2.5 text-sm font-bold text-primary transition-transform hover:scale-105"
+            >
+              {t("categories")}
+            </Link>
+            <Link
+              to="/deals"
+              className="rounded-full border border-primary-foreground/40 px-5 py-2.5 text-sm font-bold transition-colors hover:bg-primary-foreground/15"
+            >
+              {t("deals")}
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          <div className="gradient-warm card-lift rounded-3xl p-5 text-warning-foreground">
+            <p className="text-2xl font-extrabold">{all.length}+</p>
+            <p className="text-sm font-semibold opacity-80">
+              {lang === "ar" ? "منتج متوفر الآن" : "products available"}
+            </p>
+          </div>
+          <div className="gradient-fresh card-lift rounded-3xl p-5 text-primary-foreground">
+            <p className="text-2xl font-extrabold">{roots.length}</p>
+            <p className="text-sm font-semibold opacity-90">
+              {lang === "ar" ? "قسم للتسوق" : "categories to explore"}
+            </p>
+          </div>
+        </div>
+      </section>
+
       {banners.data && banners.data.length > 0 && (
-        <NewsCarousel items={banners.data as never} />
+        <div className="animate-rise mt-4">
+          <NewsCarousel items={banners.data as never} />
+        </div>
       )}
 
       <DealsTicker products={all as never} />
 
       {roots.length > 0 && (
         <Section title={t("shopByCategory")}>
-          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+          <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
             {roots.map((c) => (
               <Link
                 key={c.id}
                 to="/search"
                 search={{ cat: c.id }}
-
-                className="flex w-24 shrink-0 flex-col items-center gap-2"
+                className="group flex w-24 shrink-0 flex-col items-center gap-2"
               >
-                <span className="flex size-20 items-center justify-center overflow-hidden rounded-2xl border bg-sand">
+                <span className="flex size-20 items-center justify-center overflow-hidden rounded-2xl border bg-sand transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary group-hover:shadow-[var(--shadow-card)]">
                   <CategoryIcon
                     icon={c.icon}
                     imageUrl={c.image_url}
                     fallback={localized(lang, c.name_ar, c.name_en).charAt(0)}
                   />
                 </span>
-                <span className="line-clamp-2 text-center text-xs font-medium">
+                <span className="line-clamp-2 text-center text-xs font-medium transition-colors group-hover:text-primary">
                   {localized(lang, c.name_ar, c.name_en)}
                 </span>
               </Link>
