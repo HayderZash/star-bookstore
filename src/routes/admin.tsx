@@ -30,6 +30,8 @@ import { BulkDeleteProducts } from "@/components/BulkDeleteProducts";
 import { DeleteOrderButton } from "@/components/DeleteOrderButton";
 import { OrderAdminTools } from "@/components/OrderAdminTools";
 import { ProfitsExcel } from "@/components/ProfitsExcel";
+import { CashierPanel } from "@/components/CashierPanel";
+import { ProfitsPanel } from "@/components/ProfitsPanel";
 import { CategoriesExcel } from "@/components/CategoriesExcel";
 import { ProductsExcel } from "@/components/ProductsExcel";
 import { ProductVariantsEditor } from "@/components/ProductVariantsEditor";
@@ -609,6 +611,8 @@ function AdminPage() {
 
 
   const sections = [
+    { value: "cashier", label: "الكاشير", desc: "بيع مباشر وطباعة الفاتورة", icon: ShoppingBasket },
+    { value: "profits", label: "الأرباح", desc: "تقرير الأرباح للمواد المباعة", icon: Calculator },
     { value: "orders", label: "الطلبات", desc: "متابعة الطلبات وتحديث حالتها", icon: ClipboardList },
     { value: "products", label: "المنتجات", desc: "إضافة المنتجات واستيرادها من Excel", icon: Package },
     { value: "categories", label: "الأقسام", desc: "تنظيم أقسام المتجر", icon: LayoutGrid },
@@ -785,6 +789,14 @@ function AdminPage() {
 
 
         {/* ORDERS */}
+        <TabsContent value="cashier" className="space-y-4">
+          <CashierPanel />
+        </TabsContent>
+
+        <TabsContent value="profits" className="space-y-4">
+          <ProfitsPanel />
+        </TabsContent>
+
         <TabsContent value="orders" className="space-y-4">
           <div className="flex flex-wrap gap-2">
             {[
@@ -1021,6 +1033,16 @@ function AdminPage() {
                 value={pform.price}
                 onValueChange={(v) => setPform({ ...pform, price: v ?? 0 })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>السعر الأساس (الكلفة — لا يظهر للزبون)</Label>
+              <NumberField
+                value={pform.cost_price}
+                onValueChange={(v) => setPform({ ...pform, cost_price: v ?? 0 })}
+              />
+              <p className="text-xs text-muted-foreground">
+                سعر شراء القطعة قبل الربح، يُستخدم في تقرير الأرباح فقط.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>نسبة الخصم %</Label>
