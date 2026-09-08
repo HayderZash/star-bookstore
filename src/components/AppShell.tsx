@@ -284,11 +284,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4">
           <SideMenu settings={settings} storeName={storeName} isAdmin={isAdmin} pathname={pathname} />
 
-          <Link to="/" className="flex shrink-0 items-center gap-2">
+          <Link to="/" className="group flex shrink-0 items-center gap-2">
             <img
               src={settings?.["logo_url"] || najmLogo.url}
               alt="مكتبة النجم"
-              className="size-9 rounded-xl object-contain"
+              className="size-9 rounded-xl object-contain transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6"
             />
             <span className="hidden text-base font-bold sm:block">
               {storeName || (lang === "ar" ? "مكتبة النجم" : "مكتبة النجم")}
@@ -341,7 +341,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5">
+        <div key={pathname} className="animate-rise">{children}</div>
+      </main>
 
       <footer className="mt-8 hidden border-t bg-sand py-6 text-center text-xs text-muted-foreground md:block">
         {storeName || "مكتبة النجم"} © {new Date().getFullYear()}
@@ -370,14 +372,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 key={to}
                 to={to}
                 className={cn(
-                  "relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground",
+                  "relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors",
                   active && "text-primary",
                 )}
               >
                 <span className="relative">
-                  <Icon className={cn("size-5", active && "stroke-[2.4]")} />
+                  <Icon className={cn("size-5 transition-transform duration-300", active && "stroke-[2.4] -translate-y-0.5 scale-110")} />
                   {key === "cart" && count > 0 && (
-                    <span className="absolute -top-1.5 -end-2 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                    <span className="animate-pop absolute -top-1.5 -end-2 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
                       {count}
                     </span>
                   )}

@@ -53,7 +53,8 @@ export function ProductCard({
   const soldOut = product.stock_qty <= 0;
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5">
+    <div className="group card-lift animate-rise relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-card)]">
+      <span className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1 origin-left scale-x-0 gradient-warm transition-transform duration-500 group-hover:scale-x-100" />
       <button
         type="button"
         aria-label={t("wishlist")}
@@ -73,8 +74,9 @@ export function ProductCard({
               src={product.image_url}
               alt={localized(lang, product.name_ar, product.name_en)}
               loading="lazy"
-              className="transition-transform duration-300 group-hover:scale-105"
+              className="transition-transform duration-500 ease-out group-hover:scale-110"
             />
+
 
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
@@ -112,7 +114,7 @@ export function ProductCard({
         <Button
           size="sm"
           variant="secondary"
-          className="h-9 w-full rounded-full text-xs font-semibold"
+          className="h-9 w-full rounded-full text-xs font-semibold transition-all duration-300 hover:bg-primary hover:text-primary-foreground active:scale-95"
           disabled={soldOut}
           onClick={() => {
             add(
