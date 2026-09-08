@@ -3,6 +3,23 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
+// On external hosting (e.g. Netlify) the server-side SUPABASE_* variables may be
+// missing. The public URL/publishable key are baked into the build through the
+// VITE_* variables, so mirror them into process.env before anything reads them.
+try {
+  const fallbacks: Record<string, string | undefined> = {
+    SUPABASE_URL: import.meta.env['VITE_SUPABASE_URL'] as string | undefined,
+    SUPABASE_PUBLISHABLE_KEY: import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] as string | undefined,
+    SUPABASE_PROJECT_ID: import.meta.env['VITE_SUPABASE_PROJECT_ID'] as string | undefined,
+  };
+  for (const [key, value] of Object.entries(fallbacks)) {
+    if (value && !process.env[key]) process.env[key] = value;
+  }
+} catch {
+  // process/env unavailable — nothing to mirror.
+}
+
+
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
