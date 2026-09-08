@@ -269,3 +269,31 @@ export const stockAlertsQuery = queryOptions({
 });
 
 
+export type ProductVariant = {
+  id: string;
+  product_id: string;
+  group_ar: string;
+  group_en: string;
+  value_ar: string;
+  value_en: string;
+  price_delta: number;
+  stock_qty: number;
+  is_active: boolean;
+  sort_order: number;
+};
+
+const VARIANT_COLS =
+  "id, product_id, group_ar, group_en, value_ar, value_en, price_delta, stock_qty, is_active, sort_order";
+
+export const productVariantsQuery = queryOptions({
+  queryKey: ["product_variants"],
+  queryFn: async (): Promise<ProductVariant[]> => {
+    const { data, error } = await supabase
+      .from("product_variants")
+      .select(VARIANT_COLS)
+      .order("sort_order")
+      .order("created_at");
+    if (error) throw error;
+    return (data ?? []) as ProductVariant[];
+  },
+});
