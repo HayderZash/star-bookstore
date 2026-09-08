@@ -77,7 +77,7 @@ export function DealsTicker({ products }: { products: Deal[] }) {
             key={p.id}
             to="/product/$id"
             params={{ id: p.id }}
-            className="flex w-40 shrink-0 snap-start flex-col overflow-hidden rounded-xl border bg-card"
+            className="flex w-40 shrink-0 flex-col overflow-hidden rounded-xl border bg-card"
           >
             <div className="relative aspect-square bg-sand">
               {p.image_url ? (
