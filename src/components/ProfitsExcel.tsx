@@ -46,7 +46,6 @@ export function ProfitsExcel({
         "كلفة المواد": r.total_base,
         "مجموع البيع": r.total_sell,
         "الربح": r.total_profit,
-        "نسبة الربح %": r.percent,
         "إجمالي الفاتورة": r.total_amount,
       }));
       const details = rows.flatMap((r) =>
@@ -76,7 +75,6 @@ export function ProfitsExcel({
         "كلفة المواد": totals.base,
         "مجموع البيع": totals.sell,
         "الربح": totals.profit,
-        "نسبة الربح %": totals.base > 0 ? Math.round((totals.profit / totals.base) * 1000) / 10 : 0,
         "إجمالي الفاتورة": "" as never,
       });
 
