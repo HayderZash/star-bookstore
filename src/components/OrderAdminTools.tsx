@@ -42,7 +42,7 @@ const money = (n: number) => formatIQD(Number(n) || 0, "ar");
 function invoiceHtml(order: OrderRecord, settings: Record<string, string>) {
   const items = (order["order_items"] ?? []).filter((i: OrderRecord) => !i["is_unavailable"]);
   const logo = settings["logo_url"] || storeLogo.url;
-  const name = settings["store_name_ar"] || "SmartTech";
+  const name = settings["store_name_ar"] || "مكتبة النجم";
   const phone = settings["store_phone"] || settings["support_whatsapp"] || "";
   const address = settings["store_address"] || "";
   const email = settings["store_email"] || "";
@@ -134,7 +134,7 @@ function invoiceHtml(order: OrderRecord, settings: Record<string, string>) {
 
 /** Short WhatsApp text version of the invoice. */
 function invoiceText(order: OrderRecord, settings: Record<string, string>) {
-  const name = settings["store_name_ar"] || "SmartTech";
+  const name = settings["store_name_ar"] || "مكتبة النجم";
   const items = (order["order_items"] ?? []).filter((i: OrderRecord) => !i["is_unavailable"]);
   const lines = items
     .map(

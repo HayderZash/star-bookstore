@@ -29,9 +29,9 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/product/$id")({
   head: () => ({
     meta: [
-      { title: "تفاصيل المنتج | SmartTech" },
+      { title: "تفاصيل المنتج | مكتبة النجم" },
       { name: "description", content: "تفاصيل المنتج والسعر وحالة التوفر والكتالوج الفني." },
-      { property: "og:title", content: "تفاصيل المنتج | SmartTech" },
+      { property: "og:title", content: "تفاصيل المنتج | مكتبة النجم" },
       { property: "og:description", content: "اطلع على تفاصيل المنتج وأضفه إلى سلتك." },
       { property: "og:type", content: "product" },
       { name: "twitter:card", content: "summary_large_image" },

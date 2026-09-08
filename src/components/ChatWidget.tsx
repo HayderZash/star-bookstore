@@ -55,7 +55,7 @@ export function ChatWidget() {
             <div className="flex items-center gap-1">
               {panel === "chat" && waPhone && (
                 <a
-                  href={whatsappLink(waPhone, "مرحباً SmartTech، لدي استفسار:")}
+                  href={whatsappLink(waPhone, "مرحباً مكتبة النجم، لدي استفسار:")}
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-full bg-primary-soft px-3 py-1 text-[11px] font-semibold text-primary"

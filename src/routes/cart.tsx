@@ -26,9 +26,9 @@ import { governoratesQuery, myOrdersQuery } from "@/lib/queries";
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "السلة وإتمام الطلب | SmartTech" },
+      { title: "السلة وإتمام الطلب | مكتبة النجم" },
       { name: "description", content: "راجع سلتك واختر المحافظة وأكمل طلبك بالدفع عند الاستلام." },
-      { property: "og:title", content: "السلة | SmartTech" },
+      { property: "og:title", content: "السلة | مكتبة النجم" },
       { property: "og:description", content: "أكمل طلبك واختر محافظتك لحساب أجور التوصيل." },
     ],
   }),

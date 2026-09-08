@@ -10,9 +10,9 @@ import { useWishlist } from "@/lib/wishlist";
 export const Route = createFileRoute("/wishlist")({
   head: () => ({
     meta: [
-      { title: "المفضلة | SmartTech" },
-      { name: "description", content: "قائمة المنتجات المفضلة لديك في متجر SmartTech." },
-      { property: "og:title", content: "المفضلة | SmartTech" },
+      { title: "المفضلة | مكتبة النجم" },
+      { name: "description", content: "قائمة المنتجات المفضلة لديك في متجر مكتبة النجم." },
+      { property: "og:title", content: "المفضلة | مكتبة النجم" },
       { property: "og:description", content: "احفظ منتجاتك المفضلة وارجع إليها لاحقاً." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

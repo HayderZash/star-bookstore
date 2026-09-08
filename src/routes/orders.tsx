@@ -27,9 +27,9 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/orders")({
   head: () => ({
     meta: [
-      { title: "طلباتي | SmartTech" },
+      { title: "طلباتي | مكتبة النجم" },
       { name: "description", content: "تابع حالة طلباتك: مراجعة، تجهيز، إرسال، إكتمال." },
-      { property: "og:title", content: "طلباتي | SmartTech" },
+      { property: "og:title", content: "طلباتي | مكتبة النجم" },
       { property: "og:description", content: "تتبع طلباتك ومعرفة حالتها بالتفصيل." },
     ],
   }),

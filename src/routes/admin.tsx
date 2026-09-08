@@ -75,10 +75,10 @@ import {
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "لوحة الإدارة | SmartTech" },
+      { title: "لوحة الإدارة | مكتبة النجم" },
       { name: "description", content: "إدارة المنتجات والأقسام والطلبات وإعدادات المتجر." },
       { name: "robots", content: "noindex" },
-      { property: "og:title", content: "لوحة الإدارة | SmartTech" },
+      { property: "og:title", content: "لوحة الإدارة | مكتبة النجم" },
       { property: "og:description", content: "إدارة المتجر بالكامل من مكان واحد." },
     ],
   }),
@@ -1722,7 +1722,7 @@ function AdminPage() {
                       </p>
                     </div>
                     <a
-                      href={whatsappLink(String(a["phone"]), "المنتج متوفر الآن في SmartTech")}
+                      href={whatsappLink(String(a["phone"]), "المنتج متوفر الآن في مكتبة النجم")}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="rounded-full border px-3 py-1 text-xs font-semibold"

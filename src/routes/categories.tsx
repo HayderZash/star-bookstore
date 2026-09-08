@@ -9,12 +9,12 @@ import { categoriesQuery, productsQuery, settingsQuery } from "@/lib/queries";
 export const Route = createFileRoute("/categories")({
   head: () => ({
     meta: [
-      { title: "الأقسام | SmartTech" },
+      { title: "الأقسام | مكتبة النجم" },
       {
         name: "description",
         content: "تصفح أقسام المتجر: إلكترونيات، كهربائيات، طاقة شمسية، مواد بناء ومستلزمات عامة.",
       },
-      { property: "og:title", content: "أقسام SmartTech" },
+      { property: "og:title", content: "أقسام مكتبة النجم" },
       { property: "og:description", content: "تصفح كل أقسام المتجر والأقسام الفرعية." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

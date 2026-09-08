@@ -43,7 +43,7 @@ import { useLang } from "@/lib/i18n";
 import { settingsQuery } from "@/lib/queries";
 import { whatsappLink } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import smartTechLogo from "@/lib/store-logo";
+import najmLogo from "@/lib/store-logo";
 
 const NAV = [
   { to: "/", key: "home", icon: Home },
@@ -278,7 +278,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: settings } = useQuery(settingsQuery);
   const support = settings?.["support_whatsapp"];
-  const storeName = (lang === "ar" ? settings?.["store_name_ar"] : settings?.["store_name_en"]) || "SmartTech";
+  const storeName = (lang === "ar" ? settings?.["store_name_ar"] : settings?.["store_name_en"]) || "مكتبة النجم";
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20 md:pb-0">
@@ -288,12 +288,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <Link to="/" className="flex shrink-0 items-center gap-2">
             <img
-              src={settings?.["logo_url"] || smartTechLogo.url}
-              alt="SmartTech"
+              src={settings?.["logo_url"] || najmLogo.url}
+              alt="مكتبة النجم"
               className="size-9 rounded-xl object-contain"
             />
             <span className="hidden text-base font-bold sm:block">
-              {storeName || (lang === "ar" ? "SmartTech" : "SmartTech")}
+              {storeName || (lang === "ar" ? "مكتبة النجم" : "مكتبة النجم")}
             </span>
           </Link>
 
@@ -346,7 +346,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5">{children}</main>
 
       <footer className="mt-8 hidden border-t bg-sand py-6 text-center text-xs text-muted-foreground md:block">
-        {storeName || "SmartTech"} © {new Date().getFullYear()}
+        {storeName || "مكتبة النجم"} © {new Date().getFullYear()}
       </footer>
 
       {support && (

@@ -19,9 +19,9 @@ type TrackResult = {
 export const Route = createFileRoute("/track")({
   head: () => ({
     meta: [
-      { title: "تتبّع الطلب | SmartTech" },
-      { name: "description", content: "تتبّع حالة طلبك في SmartTech برقم الطلب ورقم الهاتف بدون تسجيل دخول." },
-      { property: "og:title", content: "تتبّع الطلب | SmartTech" },
+      { title: "تتبّع الطلب | مكتبة النجم" },
+      { name: "description", content: "تتبّع حالة طلبك في مكتبة النجم برقم الطلب ورقم الهاتف بدون تسجيل دخول." },
+      { property: "og:title", content: "تتبّع الطلب | مكتبة النجم" },
       { property: "og:description", content: "اعرف حالة طلبك خلال ثوانٍ." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

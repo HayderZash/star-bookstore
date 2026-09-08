@@ -29,7 +29,7 @@ const STORAGE_KEY = "smarttech_ai_chat_v1";
 
 const WELCOME: Turn = {
   role: "assistant",
-  content: "أهلاً بك في SmartTech 👋 اسألني عن أي منتج (مثلاً: ريلي ٢٤ أمبير) وسأجده لك.",
+  content: "أهلاً بك في مكتبة النجم 👋 اسألني عن أي منتج (مثلاً: ريلي ٢٤ أمبير) وسأجده لك.",
 };
 
 /** Reads the saved conversation (kept in this browser only). */
