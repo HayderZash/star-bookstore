@@ -163,7 +163,7 @@ function Home() {
             </p>
           </div>
           <div className="gradient-fresh card-lift rounded-3xl p-5 text-primary-foreground">
-            <p className="text-2xl font-extrabold">{roots.length}</p>
+            <p className="text-2xl font-extrabold">{roots.length > 0 ? roots.length : "…"}</p>
             <p className="text-sm font-semibold opacity-90">
               {lang === "ar" ? "قسم للتسوق" : "categories to explore"}
             </p>
