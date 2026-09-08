@@ -53,7 +53,8 @@ export function ProductCard({
   const soldOut = product.stock_qty <= 0;
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5">
+    <div className="group card-lift animate-rise relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-card)]">
+      <span className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1 origin-left scale-x-0 gradient-warm transition-transform duration-500 group-hover:scale-x-100" />
       <button
         type="button"
         aria-label={t("wishlist")}
