@@ -284,11 +284,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4">
           <SideMenu settings={settings} storeName={storeName} isAdmin={isAdmin} pathname={pathname} />
 
-          <Link to="/" className="flex shrink-0 items-center gap-2">
+          <Link to="/" className="group flex shrink-0 items-center gap-2">
             <img
               src={settings?.["logo_url"] || najmLogo.url}
               alt="مكتبة النجم"
-              className="size-9 rounded-xl object-contain"
+              className="size-9 rounded-xl object-contain transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6"
             />
             <span className="hidden text-base font-bold sm:block">
               {storeName || (lang === "ar" ? "مكتبة النجم" : "مكتبة النجم")}
