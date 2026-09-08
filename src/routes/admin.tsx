@@ -24,7 +24,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { NumberField } from "@/components/NumberField";
-import { PricingTiersEditor } from "@/components/PricingTiersEditor";
 
 import { announceDeal, createCoupon, notifyRestock } from "@/lib/admin.functions";
 import { BulkDeleteProducts } from "@/components/BulkDeleteProducts";
@@ -334,6 +333,7 @@ const emptyProduct = {
   description_ar: "",
   description_en: "",
   price: 0,
+  cost_price: 0,
   discount_price: null as number | null,
   category_id: null as string | null,
   image_url: "",
@@ -489,11 +489,7 @@ function AdminPage() {
   const startEdit = (p: Product) => {
     setEditingId(p.id);
     setEditSignal((n) => n + 1);
-    setPrevDiscount(
-      (p.base_discount_price ?? p.discount_price) === null
-        ? null
-        : Number(p.base_discount_price ?? p.discount_price),
-    );
+    setPrevDiscount(p.discount_price === null ? null : Number(p.discount_price));
     setTab("products");
     setPform({
       sku: p.sku ?? "",
@@ -501,11 +497,9 @@ function AdminPage() {
       name_en: p.name_en ?? "",
       description_ar: p.description_ar ?? "",
       description_en: p.description_en ?? "",
-      price: Number(p.base_price ?? p.price) || 0,
-      discount_price:
-        (p.base_discount_price ?? p.discount_price) === null
-          ? null
-          : Number(p.base_discount_price ?? p.discount_price),
+      price: Number(p.price) || 0,
+      cost_price: Number(p.cost_price) || 0,
+      discount_price: p.discount_price === null ? null : Number(p.discount_price),
 
       category_id: p.category_id ?? null,
       image_url: p.image_url ?? "",
@@ -1822,18 +1816,6 @@ function AdminPage() {
                 </div>
               ))}
             </div>
-          </Panel>
-
-          <Panel
-            id="set-pricing"
-            title="قواعد التسعير الديناميكي"
-            desc="شرائح حسب السعر: نسبة أعلى للأسعار المنخفضة وأقل للمرتفعة، مع التقريب لأقرب 250 دينار"
-          >
-            <PricingTiersEditor
-              initialValue={settings.data?.["price_tiers"]}
-              legacyPercent={Number(settings.data?.["price_markup_percent"] ?? 0) || 0}
-              onChange={(json) => setStore((s) => ({ ...s, price_tiers: json }))}
-            />
           </Panel>
 
           <Panel

@@ -242,6 +242,7 @@ export type Database = {
       }
       order_items: {
         Row: {
+          cost_price: number
           id: string
           is_unavailable: boolean
           order_id: string
@@ -251,6 +252,7 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          cost_price?: number
           id?: string
           is_unavailable?: boolean
           order_id: string
@@ -260,6 +262,7 @@ export type Database = {
           unit_price?: number
         }
         Update: {
+          cost_price?: number
           id?: string
           is_unavailable?: boolean
           order_id?: string
@@ -356,6 +359,93 @@ export type Database = {
           },
         ]
       }
+      pos_sale_items: {
+        Row: {
+          cost_price: number
+          created_at: string
+          id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          sale_id: string
+          unit_price: number
+        }
+        Insert: {
+          cost_price?: number
+          created_at?: string
+          id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          sale_id: string
+          unit_price?: number
+        }
+        Update: {
+          cost_price?: number
+          created_at?: string
+          id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          sale_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "pos_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_sales: {
+        Row: {
+          cashier_id: string | null
+          created_at: string
+          customer_name: string
+          discount_amount: number
+          id: string
+          note: string
+          phone: string
+          sale_number: number
+          subtotal: number
+          total_amount: number
+        }
+        Insert: {
+          cashier_id?: string | null
+          created_at?: string
+          customer_name?: string
+          discount_amount?: number
+          id?: string
+          note?: string
+          phone?: string
+          sale_number?: number
+          subtotal?: number
+          total_amount?: number
+        }
+        Update: {
+          cashier_id?: string | null
+          created_at?: string
+          customer_name?: string
+          discount_amount?: number
+          id?: string
+          note?: string
+          phone?: string
+          sale_number?: number
+          subtotal?: number
+          total_amount?: number
+        }
+        Relationships: []
+      }
       product_variants: {
         Row: {
           created_at: string
@@ -410,6 +500,7 @@ export type Database = {
         Row: {
           catalog_pdf_url: string | null
           category_id: string | null
+          cost_price: number
           created_at: string
           deal_ends_at: string | null
           description_ar: string
@@ -428,6 +519,7 @@ export type Database = {
         Insert: {
           catalog_pdf_url?: string | null
           category_id?: string | null
+          cost_price?: number
           created_at?: string
           deal_ends_at?: string | null
           description_ar?: string
@@ -446,6 +538,7 @@ export type Database = {
         Update: {
           catalog_pdf_url?: string | null
           category_id?: string | null
+          cost_price?: number
           created_at?: string
           deal_ends_at?: string | null
           description_ar?: string
@@ -661,6 +754,29 @@ export type Database = {
         Returns: {
           orders_count: number
           product_id: string
+        }[]
+      }
+      pos_checkout: {
+        Args: {
+          _customer_name?: string
+          _discount?: number
+          _items: Json
+          _note?: string
+          _phone?: string
+        }
+        Returns: string
+      }
+      profit_report: {
+        Args: { _from?: string; _to?: string }
+        Returns: {
+          cost_price: number
+          product_name: string
+          quantity: number
+          sell_price: number
+          source: string
+          total_cost: number
+          total_profit: number
+          total_sell: number
         }[]
       }
       purge_old_chat_images: {
