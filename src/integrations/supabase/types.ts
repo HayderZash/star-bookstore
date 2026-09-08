@@ -356,6 +356,56 @@ export type Database = {
           },
         ]
       }
+      product_variants: {
+        Row: {
+          created_at: string
+          group_ar: string
+          group_en: string
+          id: string
+          is_active: boolean
+          price_delta: number
+          product_id: string
+          sort_order: number
+          stock_qty: number
+          value_ar: string
+          value_en: string
+        }
+        Insert: {
+          created_at?: string
+          group_ar?: string
+          group_en?: string
+          id?: string
+          is_active?: boolean
+          price_delta?: number
+          product_id: string
+          sort_order?: number
+          stock_qty?: number
+          value_ar?: string
+          value_en?: string
+        }
+        Update: {
+          created_at?: string
+          group_ar?: string
+          group_en?: string
+          id?: string
+          is_active?: boolean
+          price_delta?: number
+          product_id?: string
+          sort_order?: number
+          stock_qty?: number
+          value_ar?: string
+          value_en?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           catalog_pdf_url: string | null
@@ -482,51 +532,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      solar_components: {
-        Row: {
-          brand: string
-          capacity: number
-          created_at: string
-          id: string
-          is_active: boolean
-          kind: string
-          name_ar: string
-          name_en: string
-          price: number
-          sort_order: number
-          tier: string
-          voltage: number
-        }
-        Insert: {
-          brand?: string
-          capacity?: number
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          kind: string
-          name_ar: string
-          name_en?: string
-          price?: number
-          sort_order?: number
-          tier?: string
-          voltage?: number
-        }
-        Update: {
-          brand?: string
-          capacity?: number
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          kind?: string
-          name_ar?: string
-          name_en?: string
-          price?: number
-          sort_order?: number
-          tier?: string
-          voltage?: number
-        }
-        Relationships: []
       }
       stock_alerts: {
         Row: {
