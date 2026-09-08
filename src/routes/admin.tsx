@@ -11,8 +11,10 @@ import {
   Pencil,
   Plus,
 
+  Calculator,
   Search,
   Settings,
+  ShoppingBasket,
   Star,
   Sun,
   Ticket,
