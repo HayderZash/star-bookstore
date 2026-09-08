@@ -17,7 +17,6 @@ import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as DealsRouteImport } from './routes/deals'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as SearchRouteImport } from './routes/search'
-import { Route as SolarRouteImport } from './routes/solar'
 import { Route as TrackRouteImport } from './routes/track'
 import { Route as WishlistRouteImport } from './routes/wishlist'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
@@ -63,11 +62,6 @@ const SearchRoute = SearchRouteImport.update({
   path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SolarRoute = SolarRouteImport.update({
-  id: '/solar',
-  path: '/solar',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TrackRoute = TrackRouteImport.update({
   id: '/track',
   path: '/track',
@@ -98,7 +92,6 @@ export interface FileRoutesByFullPath {
   '/deals': typeof DealsRoute
   '/orders': typeof OrdersRoute
   '/search': typeof SearchRoute
-  '/solar': typeof SolarRoute
   '/track': typeof TrackRoute
   '/wishlist': typeof WishlistRoute
   '/product/$id': typeof ProductIdRoute
@@ -113,7 +106,6 @@ export interface FileRoutesByTo {
   '/deals': typeof DealsRoute
   '/orders': typeof OrdersRoute
   '/search': typeof SearchRoute
-  '/solar': typeof SolarRoute
   '/track': typeof TrackRoute
   '/wishlist': typeof WishlistRoute
   '/product/$id': typeof ProductIdRoute
@@ -129,7 +121,6 @@ export interface FileRoutesById {
   '/deals': typeof DealsRoute
   '/orders': typeof OrdersRoute
   '/search': typeof SearchRoute
-  '/solar': typeof SolarRoute
   '/track': typeof TrackRoute
   '/wishlist': typeof WishlistRoute
   '/product/$id': typeof ProductIdRoute
@@ -146,7 +137,6 @@ export interface FileRouteTypes {
     | '/deals'
     | '/orders'
     | '/search'
-    | '/solar'
     | '/track'
     | '/wishlist'
     | '/product/$id'
@@ -161,7 +151,6 @@ export interface FileRouteTypes {
     | '/deals'
     | '/orders'
     | '/search'
-    | '/solar'
     | '/track'
     | '/wishlist'
     | '/product/$id'
@@ -176,7 +165,6 @@ export interface FileRouteTypes {
     | '/deals'
     | '/orders'
     | '/search'
-    | '/solar'
     | '/track'
     | '/wishlist'
     | '/product/$id'
@@ -192,7 +180,6 @@ export interface RootRouteChildren {
   DealsRoute: typeof DealsRoute
   OrdersRoute: typeof OrdersRoute
   SearchRoute: typeof SearchRoute
-  SolarRoute: typeof SolarRoute
   TrackRoute: typeof TrackRoute
   WishlistRoute: typeof WishlistRoute
   ProductIdRoute: typeof ProductIdRoute
@@ -257,13 +244,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/solar': {
-      id: '/solar'
-      path: '/solar'
-      fullPath: '/solar'
-      preLoaderRoute: typeof SolarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/track': {
       id: '/track'
       path: '/track'
@@ -304,7 +284,6 @@ const rootRouteChildren: RootRouteChildren = {
   DealsRoute: DealsRoute,
   OrdersRoute: OrdersRoute,
   SearchRoute: SearchRoute,
-  SolarRoute: SolarRoute,
   TrackRoute: TrackRoute,
   WishlistRoute: WishlistRoute,
   ProductIdRoute: ProductIdRoute,
