@@ -14,10 +14,10 @@ import { useLang } from "@/lib/i18n";
 export const Route = createFileRoute("/account")({
   head: () => ({
     meta: [
-      { title: "حسابي | SmartTech" },
+      { title: "حسابي | مكتبة النجم" },
       { name: "description", content: "سجّل الدخول برقم الهاتف وكلمة المرور لمتابعة طلباتك." },
-      { property: "og:title", content: "حسابي | SmartTech" },
-      { property: "og:description", content: "إدارة بياناتك ومتابعة طلباتك في SmartTech." },
+      { property: "og:title", content: "حسابي | مكتبة النجم" },
+      { property: "og:description", content: "إدارة بياناتك ومتابعة طلباتك في مكتبة النجم." },
     ],
   }),
   component: AccountPage,

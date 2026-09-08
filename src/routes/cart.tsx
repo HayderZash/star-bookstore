@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
-import { useCart } from "@/lib/cart";
+import { cartKey, useCart } from "@/lib/cart";
 import { formatIQD } from "@/lib/format";
 import { localized, useLang } from "@/lib/i18n";
 import { placeOrder, validateCoupon } from "@/lib/orders.functions";
@@ -26,9 +26,9 @@ import { governoratesQuery, myOrdersQuery } from "@/lib/queries";
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "السلة وإتمام الطلب | SmartTech" },
+      { title: "السلة وإتمام الطلب | مكتبة النجم" },
       { name: "description", content: "راجع سلتك واختر المحافظة وأكمل طلبك بالدفع عند الاستلام." },
-      { property: "og:title", content: "السلة | SmartTech" },
+      { property: "og:title", content: "السلة | مكتبة النجم" },
       { property: "og:description", content: "أكمل طلبك واختر محافظتك لحساب أجور التوصيل." },
     ],
   }),
@@ -133,7 +133,17 @@ function CartPage() {
     try {
       const res = await submit({
         data: {
-          items: items.map((i) => ({ product_id: i.id, quantity: i.quantity })),
+          items: items.map((i) => ({
+            product_id: i.id,
+            quantity: i.quantity,
+            options: (i.options ?? []).map((o) => ({
+              variant_id: o.variant_id,
+              group_ar: o.group_ar,
+              group_en: o.group_en,
+              value_ar: o.value_ar,
+              value_en: o.value_en,
+            })),
+          })),
           governorate_id: govId,
           landmark: landmark.trim(),
           preferred_delivery_time: time.trim(),
@@ -157,7 +167,7 @@ function CartPage() {
       <div className="space-y-3">
         <h1 className="text-xl font-bold">{t("cart")}</h1>
         {items.map((i) => (
-          <div key={i.id} className="flex gap-3 rounded-2xl border bg-card p-3">
+          <div key={cartKey(i)} className="flex gap-3 rounded-2xl border bg-card p-3">
             <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-sand">
               {i.image_url && (
                 <img
@@ -171,6 +181,16 @@ function CartPage() {
               <p className="line-clamp-2 text-sm font-semibold">
                 {localized(lang, i.name_ar, i.name_en)}
               </p>
+              {(i.options ?? []).length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {(i.options ?? [])
+                    .map(
+                      (o) =>
+                        `${localized(lang, o.group_ar, o.group_en)}: ${localized(lang, o.value_ar, o.value_en)}`,
+                    )
+                    .join(" • ")}
+                </p>
+              )}
               {(() => {
                 const orig = Number(i.original_price ?? i.price);
                 const off = orig > i.price ? Math.round(((orig - i.price) / orig) * 100) : 0;
@@ -205,7 +225,7 @@ function CartPage() {
                     size="icon"
                     className="size-7 rounded-full"
                     aria-label="-"
-                    onClick={() => setQty(i.id, i.quantity - 1)}
+                    onClick={() => setQty(cartKey(i), i.quantity - 1)}
                   >
                     <Minus className="size-3.5" />
                   </Button>
@@ -215,7 +235,7 @@ function CartPage() {
                     size="icon"
                     className="size-7 rounded-full"
                     aria-label="+"
-                    onClick={() => setQty(i.id, i.quantity + 1)}
+                    onClick={() => setQty(cartKey(i), i.quantity + 1)}
                   >
                     <Plus className="size-3.5" />
                   </Button>
@@ -224,7 +244,7 @@ function CartPage() {
                   variant="ghost"
                   size="sm"
                   className="text-destructive"
-                  onClick={() => remove(i.id)}
+                  onClick={() => remove(cartKey(i))}
                 >
                   <Trash2 className="size-4" />
                   {t("remove")}
@@ -327,7 +347,7 @@ function CartPage() {
               const orig = Number(i.original_price ?? i.price);
               const off = Math.round(((orig - i.price) / orig) * 100);
               return (
-                <div key={`sv-${i.id}`} className="flex justify-between gap-2 text-destructive">
+                <div key={`sv-${cartKey(i)}`} className="flex justify-between gap-2 text-destructive">
                   <dt className="line-clamp-1">
                     {lang === "ar" ? "خصم" : "Discount"} {off}% —{" "}
                     {localized(lang, i.name_ar, i.name_en)}

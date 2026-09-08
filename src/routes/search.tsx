@@ -39,9 +39,9 @@ export const Route = createFileRoute("/search")({
   }),
   head: () => ({
     meta: [
-      { title: "البحث عن المنتجات | SmartTech" },
+      { title: "البحث عن المنتجات | مكتبة النجم" },
       { name: "description", content: "ابحث عن المنتجات وفلترها حسب القسم والسعر والترتيب." },
-      { property: "og:title", content: "البحث | SmartTech" },
+      { property: "og:title", content: "البحث | مكتبة النجم" },
       { property: "og:description", content: "ابحث وفلتر منتجات المتجر حسب القسم والسعر." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

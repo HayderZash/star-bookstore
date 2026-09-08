@@ -64,7 +64,7 @@ const STATUS_TEXT: Record<string, { title: string; body: (n: number) => string }
   },
   completed: {
     title: "تم إكمال طلبك",
-    body: (n) => `تم تسليم طلبك رقم #${n} بنجاح. شكراً لثقتك بـ SmartTech.`,
+    body: (n) => `تم تسليم طلبك رقم #${n} بنجاح. شكراً لثقتك بـ مكتبة النجم.`,
   },
   cancelled: {
     title: "تم إلغاء الطلب",

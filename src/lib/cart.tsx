@@ -1,5 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+export type CartOption = {
+  variant_id: string;
+  group_ar: string;
+  group_en: string;
+  value_ar: string;
+  value_en: string;
+};
+
 export type CartItem = {
   id: string;
   name_ar: string;
@@ -9,15 +17,23 @@ export type CartItem = {
   original_price?: number | null;
   image_url: string | null;
   quantity: number;
+  /** Selected product options (colors, sizes, ...) — empty when the product has none. */
+  options?: CartOption[];
 };
+
+/** Unique line identity: same product with different options = different lines. */
+export function cartKey(item: { id: string; options?: CartOption[] }) {
+  const opts = (item.options ?? []).map((o) => o.variant_id).sort().join(",");
+  return opts ? `${item.id}::${opts}` : item.id;
+}
 
 type Ctx = {
   items: CartItem[];
   count: number;
   subtotal: number;
   add: (item: Omit<CartItem, "quantity">, qty?: number) => void;
-  setQty: (id: string, qty: number) => void;
-  remove: (id: string) => void;
+  setQty: (key: string, qty: number) => void;
+  remove: (key: string) => void;
   clear: () => void;
 };
 
@@ -49,18 +65,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
       subtotal: items.reduce((n, i) => n + i.quantity * i.price, 0),
       add: (item, qty = 1) =>
         setItems((prev) => {
-          const found = prev.find((p) => p.id === item.id);
+          const k = cartKey(item);
+          const found = prev.find((p) => cartKey(p) === k);
           if (found)
-            return prev.map((p) => (p.id === item.id ? { ...p, quantity: p.quantity + qty } : p));
+            return prev.map((p) =>
+              cartKey(p) === k ? { ...p, quantity: p.quantity + qty } : p,
+            );
           return [...prev, { ...item, quantity: qty }];
         }),
-      setQty: (id, qty) =>
+      setQty: (key, qty) =>
         setItems((prev) =>
           qty <= 0
-            ? prev.filter((p) => p.id !== id)
-            : prev.map((p) => (p.id === id ? { ...p, quantity: qty } : p)),
+            ? prev.filter((p) => cartKey(p) !== key)
+            : prev.map((p) => (cartKey(p) === key ? { ...p, quantity: qty } : p)),
         ),
-      remove: (id) => setItems((prev) => prev.filter((p) => p.id !== id)),
+      remove: (key) => setItems((prev) => prev.filter((p) => cartKey(p) !== key)),
       clear: () => setItems([]),
     }),
     [items],

@@ -56,7 +56,7 @@ export function ChatInbox() {
           </p>
           {info.phone && (
             <a
-              href={whatsappLink(info.phone, `مرحباً ${info.name}، بخصوص رسالتك لمتجر SmartTech:`)}
+              href={whatsappLink(info.phone, `مرحباً ${info.name}، بخصوص رسالتك لمتجر مكتبة النجم:`)}
               target="_blank"
               rel="noreferrer"
               className="rounded-full border px-3 py-1.5 text-xs font-semibold"

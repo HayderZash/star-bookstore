@@ -5,7 +5,24 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const placeOrderSchema = z.object({
   items: z
-    .array(z.object({ product_id: z.string().uuid(), quantity: z.number().int().min(1).max(999) }))
+    .array(
+      z.object({
+        product_id: z.string().uuid(),
+        quantity: z.number().int().min(1).max(999),
+        options: z
+          .array(
+            z.object({
+              variant_id: z.string().uuid(),
+              group_ar: z.string().max(80),
+              group_en: z.string().max(80),
+              value_ar: z.string().max(80),
+              value_en: z.string().max(80),
+            }),
+          )
+          .max(10)
+          .optional(),
+      }),
+    )
     .min(1)
     .max(100),
   governorate_id: z.string().uuid(),
@@ -88,6 +105,16 @@ export const placeOrder = createServerFn({ method: "POST" })
 
     const tiers = await getPricingTiers(supabase);
 
+    const variantIds = data.items.flatMap((i) => (i.options ?? []).map((o) => o.variant_id));
+    const variants = variantIds.length
+      ? (
+          await supabase
+            .from("product_variants")
+            .select("id, product_id, group_ar, value_ar, price_delta")
+            .in("id", variantIds)
+        ).data ?? []
+      : [];
+
     const lines = data.items
       .map((line) => {
         const p = products.find((x) => x.id === line.product_id);
@@ -96,12 +123,19 @@ export const placeOrder = createServerFn({ method: "POST" })
           p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.price)
             ? Number(p.discount_price)
             : Number(p.price);
-        const unit = applyPricing(base, tiers);
+        const picked = (line.options ?? [])
+          .map((o) => variants.find((v) => v.id === o.variant_id && v.product_id === p.id))
+          .filter((v): v is NonNullable<typeof v> => !!v);
+        const delta = picked.reduce((n, v) => n + Number(v.price_delta || 0), 0);
+        const optionLabel = picked
+          .map((v) => `${v.group_ar}: ${v.value_ar}`)
+          .join("، ");
+        const unit = applyPricing(base, tiers) + delta;
 
-        const listUnit = applyPricing(Number(p.price), tiers);
+        const listUnit = applyPricing(Number(p.price), tiers) + delta;
         return {
           product_id: p.id,
-          product_name: p.name_ar || p.name_en,
+          product_name: `${p.name_ar || p.name_en}${optionLabel ? ` (${optionLabel})` : ""}`,
           quantity: line.quantity,
           unit_price: unit,
           list_price: listUnit,
@@ -229,7 +263,14 @@ type NotifyPayload = {
 
 const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
 
+/** Direct Bot API when a bot token is configured, otherwise the connector gateway. */
+function tgBase() {
+  const token = process.env["TELEGRAM_BOT_TOKEN"];
+  return token ? `https://api.telegram.org/bot${token}` : GATEWAY;
+}
+
 function tgHeaders(lovableKey: string, telegramKey: string) {
+  if (process.env["TELEGRAM_BOT_TOKEN"]) return { "Content-Type": "application/json" };
   return {
     Authorization: `Bearer ${lovableKey}`,
     "X-Connection-Api-Key": telegramKey,
@@ -246,7 +287,7 @@ async function resolveChatId(
   telegramKey: string,
   username: string,
 ): Promise<string | null> {
-  const res = await fetch(`${GATEWAY}/getUpdates`, {
+  const res = await fetch(`${tgBase()}/getUpdates`, {
     method: "POST",
     headers: tgHeaders(lovableKey, telegramKey),
     body: JSON.stringify({ limit: 100 }),
@@ -278,9 +319,10 @@ async function sendTelegramText(
   text: string,
 ): Promise<void> {
   try {
-    const lovableKey = process.env["LOVABLE_API_KEY"];
-    const telegramKey = process.env["TELEGRAM_API_KEY"];
-    if (!lovableKey || !telegramKey) return;
+    const botToken = process.env["TELEGRAM_BOT_TOKEN"];
+    const lovableKey = process.env["LOVABLE_API_KEY"] ?? "";
+    const telegramKey = process.env["TELEGRAM_API_KEY"] ?? "";
+    if (!botToken && (!lovableKey || !telegramKey)) return;
 
     const { data: settings } = await supabase
       .from("store_settings")
@@ -300,7 +342,7 @@ async function sendTelegramText(
     }
     if (!chatId) return;
 
-    const res = await fetch(`${GATEWAY}/sendMessage`, {
+    const res = await fetch(`${tgBase()}/sendMessage`, {
       method: "POST",
       headers: tgHeaders(lovableKey, telegramKey),
       body: JSON.stringify({ chat_id: chatId, text }),

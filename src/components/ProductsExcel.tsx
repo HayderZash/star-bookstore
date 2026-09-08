@@ -104,15 +104,15 @@ export function ProductsExcel({
   const exportTemplate = () => {
     const example = {
       sku: "SKU-001",
-      name_ar: "مثال: لوح طاقة شمسية 550 واط",
-      name_en: "Example: Solar panel 550W",
+      name_ar: "مثال: دفتر 100 ورقة مسطر",
+      name_en: "Example: Notebook 100 sheets",
       description_ar: "وصف مختصر",
       description_en: "Short description",
       price: 250000,
       discount_price: "",
       stock_qty: 10,
       is_featured: "لا",
-      category: categories[0] ? categories[0].name_ar : "الإلكترونيات",
+      category: categories[0] ? categories[0].name_ar : "القرطاسية",
       image_url: "",
       catalog_pdf_url: "",
     };
@@ -124,7 +124,7 @@ export function ProductsExcel({
     ]);
     guide["!cols"] = [{ wch: 30 }, { wch: 30 }];
     XLSX.utils.book_append_sheet(wb, guide, "categories");
-    downloadWorkbook(wb, "smarttech-products-template.xlsx");
+    downloadWorkbook(wb, "najm-products-template.xlsx");
   };
 
   const exportCurrent = () => {
@@ -146,7 +146,7 @@ export function ProductsExcel({
     }));
     const ws = XLSX.utils.json_to_sheet(rows, { header: [...HEADERS] });
     ws["!cols"] = HEADERS.map(() => ({ wch: 20 }));
-    download(ws, "smarttech-products.xlsx");
+    download(ws, "najm-products.xlsx");
   };
 
   const handleFile = async (file: File) => {

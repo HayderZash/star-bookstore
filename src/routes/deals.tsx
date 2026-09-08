@@ -13,13 +13,13 @@ const PER_PAGE = 30;
 export const Route = createFileRoute("/deals")({
   head: () => ({
     meta: [
-      { title: "العروض والتخفيضات | SmartTech" },
+      { title: "العروض والتخفيضات | مكتبة النجم" },
       {
         name: "description",
-        content: "أقوى العروض والتخفيضات على الإلكترونيات والطاقة الشمسية والمواد الكهربائية في SmartTech.",
+        content: "أقوى العروض والتخفيضات على الكتب والقرطاسية واللوازم المدرسية في مكتبة النجم.",
       },
-      { property: "og:title", content: "العروض والتخفيضات | SmartTech" },
-      { property: "og:description", content: "خصومات فعّالة وكوبونات على منتجات SmartTech." },
+      { property: "og:title", content: "العروض والتخفيضات | مكتبة النجم" },
+      { property: "og:description", content: "خصومات فعّالة وكوبونات على منتجات مكتبة النجم." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

@@ -44,12 +44,12 @@ export function CategoriesExcel({
     XLSX.utils.book_append_sheet(
       wb,
       buildSheet([
-        { name_ar: "إلكترونيات", name_en: "Electronics", parent_ar: "" },
-        { name_ar: "هواتف", name_en: "Phones", parent_ar: "إلكترونيات" },
+        { name_ar: "قرطاسية", name_en: "Stationery", parent_ar: "" },
+        { name_ar: "أقلام", name_en: "Pens", parent_ar: "قرطاسية" },
       ]),
       "categories",
     );
-    downloadWorkbook(wb, "smarttech-categories-template.xlsx");
+    downloadWorkbook(wb, "najm-categories-template.xlsx");
   };
 
   const exportCurrent = () => {
@@ -63,7 +63,7 @@ export function CategoriesExcel({
     ws["!cols"] = HEADERS.map(() => ({ wch: 30 }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "categories");
-    downloadWorkbook(wb, "smarttech-categories.xlsx");
+    downloadWorkbook(wb, "najm-categories.xlsx");
   };
 
   const handleFile = async (file: File) => {

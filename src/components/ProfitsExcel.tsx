@@ -83,7 +83,7 @@ export function ProfitsExcel({
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), "ملخص الأرباح");
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(details), "تفاصيل المواد");
-      downloadWorkbook(wb, `smarttech-profits-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      downloadWorkbook(wb, `najm-profits-${new Date().toISOString().slice(0, 10)}.xlsx`);
       toast.success(`تم تصدير ${rows.length} طلبية`);
     } catch {
       toast.error("تعذر تصدير تقرير الأرباح");

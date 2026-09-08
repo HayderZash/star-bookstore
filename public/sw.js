@@ -1,17 +1,17 @@
-/* SmartTech service worker — device notifications */
+/* مكتبة النجم service worker — device notifications */
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
 self.addEventListener("message", (event) => {
   const data = event.data || {};
   if (data.type === "notify") {
-    self.registration.showNotification(data.title || "SmartTech", {
+    self.registration.showNotification(data.title || "مكتبة النجم", {
       body: data.body || "",
       icon: "/icon-192.png",
       badge: "/icon-192.png",
       dir: "rtl",
       lang: "ar",
-      tag: data.tag || "smarttech",
+      tag: data.tag || "najm",
       renotify: true,
       vibrate: [120, 60, 120],
       data: { url: data.url || "/orders" },
@@ -24,10 +24,10 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch {
-    payload = { title: "SmartTech", body: event.data ? event.data.text() : "" };
+    payload = { title: "مكتبة النجم", body: event.data ? event.data.text() : "" };
   }
   event.waitUntil(
-    self.registration.showNotification(payload.title || "SmartTech", {
+    self.registration.showNotification(payload.title || "مكتبة النجم", {
       body: payload.body || "",
       icon: "/icon-192.png",
       badge: "/icon-192.png",
