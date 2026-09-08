@@ -25,16 +25,16 @@ import { rotationSeed, seededShuffle } from "@/lib/shuffle";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "مكتبة النجم | إلكترونيات وكهربائيات وطاقة شمسية" },
+      { title: "مكتبة النجم | قرطاسية وكتب ولوازم مدرسية" },
       {
         name: "description",
         content:
-          "تسوق الإلكترونيات والمواد الكهربائية ومنظومات الطاقة الشمسية ومواد البناء مع توصيل لكل محافظات العراق.",
+          "تسوق الكتب والقرطاسية واللوازم المدرسية والمكتبية وأدوات الرسم مع توصيل لكل محافظات العراق.",
       },
       { property: "og:title", content: "مكتبة النجم | تسوق أونلاين في العراق" },
       {
         property: "og:description",
-        content: "إلكترونيات، كهربائيات، طاقة شمسية ومواد بناء مع توصيل لجميع المحافظات.",
+        content: "كتب، قرطاسية، لوازم مدرسية ومكتبية مع توصيل لجميع المحافظات.",
       },
     ],
   }),
@@ -113,7 +113,7 @@ function Home() {
 
   return (
     <div>
-      <h1 className="sr-only">مكتبة النجم — إلكترونيات وكهربائيات وطاقة شمسية</h1>
+      <h1 className="sr-only">مكتبة النجم — كتب وقرطاسية ولوازم مدرسية</h1>
 
       {banners.data && banners.data.length > 0 && (
         <NewsCarousel items={banners.data as never} />

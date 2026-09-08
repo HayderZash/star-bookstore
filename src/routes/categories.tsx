@@ -12,7 +12,7 @@ export const Route = createFileRoute("/categories")({
       { title: "الأقسام | مكتبة النجم" },
       {
         name: "description",
-        content: "تصفح أقسام المتجر: إلكترونيات، كهربائيات، طاقة شمسية، مواد بناء ومستلزمات عامة.",
+        content: "تصفح أقسام المكتبة: كتب، قرطاسية، لوازم مدرسية، أدوات رسم ومستلزمات مكتبية.",
       },
       { property: "og:title", content: "أقسام مكتبة النجم" },
       { property: "og:description", content: "تصفح كل أقسام المتجر والأقسام الفرعية." },

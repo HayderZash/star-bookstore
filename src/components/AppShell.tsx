@@ -22,7 +22,6 @@ import {
   Heart,
   Tag,
   PackageSearch,
-  Sun,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -57,7 +56,6 @@ const EXTRA_NAV = [
   { to: "/deals", key: "dealsPage", icon: Tag },
   { to: "/wishlist", key: "wishlist", icon: Heart },
   { to: "/track", key: "trackOrder", icon: PackageSearch },
-  { to: "/solar", key: "solarCalc", icon: Sun },
 ] as const;
 
 
@@ -178,7 +176,7 @@ function SideMenu({
         <SheetHeader className="border-b p-4 text-start">
           <SheetTitle className="text-base">{storeName}</SheetTitle>
           <SheetDescription className="text-xs">
-            {about || (lang === "ar" ? "متجرك للإلكترونيات والطاقة ومواد البناء" : "Electronics, solar and building supplies")}
+            {about || (lang === "ar" ? "مكتبة النجم للقرطاسية والكتب واللوازم المدرسية" : "Books, stationery and school supplies")}
           </SheetDescription>
         </SheetHeader>
 

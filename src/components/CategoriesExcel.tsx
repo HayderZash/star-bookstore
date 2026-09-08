@@ -44,8 +44,8 @@ export function CategoriesExcel({
     XLSX.utils.book_append_sheet(
       wb,
       buildSheet([
-        { name_ar: "إلكترونيات", name_en: "Electronics", parent_ar: "" },
-        { name_ar: "هواتف", name_en: "Phones", parent_ar: "إلكترونيات" },
+        { name_ar: "قرطاسية", name_en: "Stationery", parent_ar: "" },
+        { name_ar: "أقلام", name_en: "Pens", parent_ar: "قرطاسية" },
       ]),
       "categories",
     );
