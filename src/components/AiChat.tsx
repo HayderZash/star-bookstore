@@ -25,7 +25,7 @@ type Turn = {
   failed?: boolean;
 };
 
-const STORAGE_KEY = "smarttech_ai_chat_v1";
+const STORAGE_KEY = "najm_ai_chat_v1";
 
 const WELCOME: Turn = {
   role: "assistant",

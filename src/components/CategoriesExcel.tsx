@@ -49,7 +49,7 @@ export function CategoriesExcel({
       ]),
       "categories",
     );
-    downloadWorkbook(wb, "smarttech-categories-template.xlsx");
+    downloadWorkbook(wb, "najm-categories-template.xlsx");
   };
 
   const exportCurrent = () => {
@@ -63,7 +63,7 @@ export function CategoriesExcel({
     ws["!cols"] = HEADERS.map(() => ({ wch: 30 }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "categories");
-    downloadWorkbook(wb, "smarttech-categories.xlsx");
+    downloadWorkbook(wb, "najm-categories.xlsx");
   };
 
   const handleFile = async (file: File) => {

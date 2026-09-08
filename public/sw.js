@@ -11,7 +11,7 @@ self.addEventListener("message", (event) => {
       badge: "/icon-192.png",
       dir: "rtl",
       lang: "ar",
-      tag: data.tag || "smarttech",
+      tag: data.tag || "najm",
       renotify: true,
       vibrate: [120, 60, 120],
       data: { url: data.url || "/orders" },
