@@ -182,3 +182,124 @@
 @utility animate-marquee {
   animation: marquee 28s linear infinite;
 }
+
+:root {
+  --brand-orange: oklch(0.76 0.16 62);
+  --brand-yellow: oklch(0.86 0.16 92);
+  --brand-blue: oklch(0.62 0.16 250);
+  --brand-green: oklch(0.72 0.15 152);
+  --brand-peach: oklch(0.9 0.06 60);
+  --gradient-hero: linear-gradient(135deg, oklch(0.34 0.13 285), oklch(0.42 0.15 300) 45%, oklch(0.62 0.16 250));
+  --gradient-warm: linear-gradient(120deg, var(--brand-orange), var(--brand-yellow));
+  --gradient-fresh: linear-gradient(120deg, var(--brand-blue), var(--brand-green));
+}
+
+.dark {
+  --brand-orange: oklch(0.78 0.15 62);
+  --brand-yellow: oklch(0.85 0.15 92);
+  --brand-blue: oklch(0.68 0.14 250);
+  --brand-green: oklch(0.74 0.14 152);
+  --brand-peach: oklch(0.6 0.07 60);
+}
+
+@keyframes najm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes najm-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes najm-shine {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes najm-pop {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@utility animate-rise {
+  animation: najm-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility animate-float {
+  animation: najm-float 6s ease-in-out infinite;
+}
+
+@utility animate-pop {
+  animation: najm-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility gradient-hero {
+  background-image: var(--gradient-hero);
+}
+
+@utility gradient-warm {
+  background-image: var(--gradient-warm);
+}
+
+@utility gradient-fresh {
+  background-image: var(--gradient-fresh);
+}
+
+@utility text-shine {
+  background-image: linear-gradient(
+    90deg,
+    var(--brand-yellow),
+    var(--brand-orange),
+    var(--brand-yellow)
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: najm-shine 5s linear infinite;
+}
+
+@utility card-lift {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  &:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-lift);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
