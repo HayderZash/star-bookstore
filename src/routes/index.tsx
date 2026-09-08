@@ -52,17 +52,19 @@ function Section({
 }) {
   const { t } = useLang();
   return (
-    <section className="mt-7">
+    <section className="animate-rise mt-9">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-bold">{title}</h2>
+        <h2 className="relative text-lg font-bold ps-3 before:absolute before:top-1/2 before:start-0 before:h-5 before:w-1.5 before:-translate-y-1/2 before:rounded-full before:gradient-warm">
+          {title}
+        </h2>
         {to && (
           <Link
             to="/search"
             search={to.search ?? {}}
-            className="flex items-center gap-0.5 text-sm font-medium text-primary"
+            className="group flex items-center gap-0.5 text-sm font-medium text-primary"
           >
             {t("viewAll")}
-            <ChevronLeft className="size-4 rtl:rotate-0 ltr:rotate-180" />
+            <ChevronLeft className="size-4 transition-transform group-hover:-translate-x-1 rtl:rotate-0 ltr:rotate-180" />
           </Link>
         )}
       </div>
