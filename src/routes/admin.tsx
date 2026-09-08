@@ -33,6 +33,7 @@ import { OrderAdminTools } from "@/components/OrderAdminTools";
 import { ProfitsExcel } from "@/components/ProfitsExcel";
 import { CategoriesExcel } from "@/components/CategoriesExcel";
 import { ProductsExcel } from "@/components/ProductsExcel";
+import { ProductVariantsEditor } from "@/components/ProductVariantsEditor";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -1113,6 +1114,8 @@ function AdminPage() {
               value={pform.catalog_pdf_url}
               onChange={(url) => setPform({ ...pform, catalog_pdf_url: url })}
             />
+            {editingId && <ProductVariantsEditor productId={editingId} />}
+
             <div className="flex gap-2 sm:col-span-2">
               <Button
                 className="flex-1"
