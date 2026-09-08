@@ -137,6 +137,7 @@ function CartPage() {
             product_id: i.id,
             quantity: i.quantity,
             options: (i.options ?? []).map((o) => ({
+              variant_id: o.variant_id,
               group_ar: o.group_ar,
               group_en: o.group_en,
               value_ar: o.value_ar,
