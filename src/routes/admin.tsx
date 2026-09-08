@@ -1443,8 +1443,38 @@ function AdminPage() {
 
         {/* SHIPPING */}
         <TabsContent value="shipping" className="space-y-4">
+          <Panel id="gov-new" title="إضافة محافظة" desc="أضف محافظة جديدة مع أجرة التوصيل">
+            <div className="grid gap-3 sm:grid-cols-4">
+              <Input placeholder="الاسم بالعربية" value={gform.name_ar} onChange={(e) => setGform({ ...gform, name_ar: e.target.value })} />
+              <Input dir="ltr" placeholder="Name in English" value={gform.name_en} onChange={(e) => setGform({ ...gform, name_en: e.target.value })} />
+              <Input dir="ltr" inputMode="numeric" placeholder="أجرة التوصيل" value={gform.shipping_cost} onChange={(e) => setGform({ ...gform, shipping_cost: e.target.value })} />
+              <Button
+                onClick={async () => {
+                  if (!gform.name_ar.trim()) return toast.error("أدخل اسم المحافظة");
+                  const { error } = await supabase.from("governorates").insert({
+                    name_ar: gform.name_ar.trim(),
+                    name_en: (gform.name_en || gform.name_ar).trim(),
+                    shipping_cost: Number(toLatinDigits(gform.shipping_cost)) || 0,
+                    sort_order: (governorates.data ?? []).length + 1,
+                  });
+                  if (error) toast.error(error.message);
+                  else {
+                    setGform({ name_ar: "", name_en: "", shipping_cost: "" });
+                    invalidate(["governorates"]);
+                    toast.success("تمت الإضافة");
+                  }
+                }}
+              >
+                إضافة
+              </Button>
+            </div>
+          </Panel>
+
           <Panel id="gov-list" title="أجور التوصيل" desc="حدد أجرة التوصيل لكل محافظة">
           <div className="space-y-3">
+          {governorates.data?.length === 0 && (
+            <p className="text-sm text-muted-foreground">لا توجد محافظات — أضف واحدة من الأعلى.</p>
+          )}
           {(governorates.data ?? []).map((g) => (
             <div key={g.id} className="flex items-center gap-3 rounded-2xl border bg-card p-3">
               <span className="flex-1 text-sm font-medium">{g.name_ar}</span>
@@ -1467,10 +1497,27 @@ function AdminPage() {
                   }
                 }}
               />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive"
+                aria-label="delete"
+                onClick={async () => {
+                  const { error } = await supabase.from("governorates").delete().eq("id", g.id);
+                  if (error) toast.error(error.message);
+                  else {
+                    invalidate(["governorates"]);
+                    toast.success("تم الحذف");
+                  }
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
             </div>
           ))}
           </div>
           </Panel>
+
         </TabsContent>
 
         {/* BANNERS */}
