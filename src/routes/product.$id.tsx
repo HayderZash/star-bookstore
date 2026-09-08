@@ -20,7 +20,7 @@ import {
 import { useCart } from "@/lib/cart";
 import { discountPercent, effectivePrice, formatIQD } from "@/lib/format";
 import { localized, useLang } from "@/lib/i18n";
-import { categoriesQuery, governoratesQuery, productsQuery } from "@/lib/queries";
+import { categoriesQuery, governoratesQuery, productVariantsQuery, productsQuery } from "@/lib/queries";
 import { categoryChain } from "@/lib/category-path";
 import { getRecent, pushRecent } from "@/lib/recent";
 import { useWishlist } from "@/lib/wishlist";
@@ -48,6 +48,8 @@ function ProductPage() {
   const { data, isLoading } = useQuery(productsQuery);
   const { data: govs } = useQuery(governoratesQuery);
   const { data: cats } = useQuery(categoriesQuery);
+  const { data: allVariants } = useQuery(productVariantsQuery);
+  const [picked, setPicked] = useState<Record<string, string>>({});
   const [qty, setQty] = useState(1);
   const [active, setActive] = useState(0);
   const [gov, setGov] = useState<string>("");
@@ -58,6 +60,7 @@ function ProductPage() {
     pushRecent(id);
     setActive(0);
     setQty(1);
+    setPicked({});
   }, [id]);
 
   const product = (data ?? []).find((p) => p.id === id);
@@ -82,7 +85,16 @@ function ProductPage() {
     );
   }
 
-  const price = effectivePrice(product);
+  const variants = (allVariants ?? []).filter((v) => v.product_id === product.id && v.is_active);
+  const groupNames: string[] = [];
+  for (const v of variants) if (!groupNames.includes(v.group_ar)) groupNames.push(v.group_ar);
+  const selectedVariants = groupNames
+    .map((g) => variants.find((v) => v.id === picked[g]))
+    .filter((v): v is NonNullable<typeof v> => !!v);
+  const allPicked = selectedVariants.length === groupNames.length;
+  const priceDelta = selectedVariants.reduce((n, v) => n + Number(v.price_delta || 0), 0);
+
+  const price = effectivePrice(product) + priceDelta;
   const off = discountPercent(product);
   const soldOut = product.stock_qty <= 0;
   const liked = wishlist.has(product.id);
@@ -253,6 +265,46 @@ function ProductPage() {
             </div>
           </div>
 
+          {groupNames.length > 0 && (
+            <div className="space-y-3 rounded-2xl border bg-card p-3">
+              <div className="text-sm font-semibold">{t("chooseOptions")}</div>
+              {groupNames.map((g) => {
+                const opts = variants.filter((v) => v.group_ar === g);
+                const label = localized(lang, g, opts[0]?.group_en || g);
+                return (
+                  <div key={g} className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">{label}</div>
+                    <div className="flex flex-wrap gap-2">
+                      {opts.map((v) => {
+                        const out = v.stock_qty <= 0;
+                        const on = picked[g] === v.id;
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            disabled={out}
+                            onClick={() => setPicked((prev) => ({ ...prev, [g]: v.id }))}
+                            className={cn(
+                              "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                              on
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "bg-background hover:border-primary",
+                              out && "cursor-not-allowed opacity-40 line-through",
+                            )}
+                          >
+                            {localized(lang, v.value_ar, v.value_en)}
+                            {Number(v.price_delta) !== 0 &&
+                              ` (${Number(v.price_delta) > 0 ? "+" : ""}${formatIQD(Number(v.price_delta), lang)})`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {soldOut ? (
             <StockAlert productId={product.id} />
           ) : (
@@ -281,6 +333,10 @@ function ProductPage() {
               <Button
                 className="h-12 flex-1 rounded-full text-base"
                 onClick={() => {
+                  if (!allPicked) {
+                    toast.error(t("chooseOptionFirst"));
+                    return;
+                  }
                   add(
                     {
                       id: product.id,
@@ -289,6 +345,13 @@ function ProductPage() {
                       price,
                       original_price: product.price,
                       image_url: product.image_url,
+                      options: selectedVariants.map((v) => ({
+                        variant_id: v.id,
+                        group_ar: v.group_ar,
+                        group_en: v.group_en || v.group_ar,
+                        value_ar: v.value_ar,
+                        value_en: v.value_en || v.value_ar,
+                      })),
                     },
                     qty,
                   );
