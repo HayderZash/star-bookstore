@@ -157,7 +157,7 @@ function Home() {
 
         <div className="grid gap-3">
           <div className="gradient-warm card-lift rounded-3xl p-5 text-warning-foreground">
-            <p className="text-2xl font-extrabold">{all.length}+</p>
+            <p className="text-2xl font-extrabold">{all.length > 0 ? `${all.length}+` : "…"}</p>
             <p className="text-sm font-semibold opacity-80">
               {lang === "ar" ? "منتج متوفر الآن" : "products available"}
             </p>
