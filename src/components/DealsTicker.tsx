@@ -25,16 +25,26 @@ export function DealsTicker({ products }: { products: Deal[] }) {
   useEffect(() => {
     const el = scroller.current;
     if (!el || deals.length === 0) return;
-    const id = window.setInterval(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = Math.min(now - last, 50);
+      last = now;
+      raf = requestAnimationFrame(step);
       if (paused.current) return;
       const dir = getComputedStyle(el).direction === "rtl" ? -1 : 1;
       const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) return;
       const pos = Math.abs(el.scrollLeft);
-      if (pos >= max - 2) el.scrollTo({ left: 0, behavior: "smooth" });
-      else el.scrollBy({ left: dir * 1.2, behavior: "auto" });
-    }, 16);
-    return () => window.clearInterval(id);
+      // Direct assignment (no smooth behavior) — smooth scrolling every frame causes jitter.
+      if (pos >= max - 1) el.scrollLeft = 0;
+      else el.scrollLeft = el.scrollLeft + dir * dt * 0.03;
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
   }, [deals.length]);
+
 
   if (deals.length === 0) return null;
 
