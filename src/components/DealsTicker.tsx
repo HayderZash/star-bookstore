@@ -70,7 +70,7 @@ export function DealsTicker({ products }: { products: Deal[] }) {
         onMouseLeave={resume}
         onTouchStart={pause}
         onTouchEnd={resume}
-        className="flex snap-x snap-mandatory gap-2 overflow-x-auto px-2 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-2 overflow-x-auto px-2 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {deals.map((p) => (
           <Link
