@@ -20,6 +20,7 @@ import {
   settingsQuery,
 } from "@/lib/queries";
 import { rotationSeed, seededShuffle } from "@/lib/shuffle";
+import najmLogo from "@/lib/store-logo";
 
 
 export const Route = createFileRoute("/")({
