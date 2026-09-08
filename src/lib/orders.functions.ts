@@ -1,0 +1,472 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+const placeOrderSchema = z.object({
+  items: z
+    .array(z.object({ product_id: z.string().uuid(), quantity: z.number().int().min(1).max(999) }))
+    .min(1)
+    .max(100),
+  governorate_id: z.string().uuid(),
+  landmark: z.string().trim().min(2).max(300),
+  preferred_delivery_time: z.string().trim().max(120).default(""),
+  coupon_code: z.string().trim().max(60).optional().nullable(),
+  full_name: z.string().trim().min(2).max(120),
+  phone: z.string().trim().min(8).max(20),
+});
+
+const couponSchema = z.object({ code: z.string().trim().min(1).max(60), subtotal: z.number().min(0) });
+
+import { applyPricing, parsePriceTiers, type PriceTier } from "@/lib/format";
+
+/** Reads the tiered pricing rules stored in store_settings. */
+async function getPricingTiers(supabase: {
+  from: (t: string) => any;
+}): Promise<PriceTier[]> {
+  const { data } = await supabase
+    .from("store_settings")
+    .select("key, value")
+    .in("key", ["price_tiers", "price_markup_percent"]);
+  const map = Object.fromEntries(
+    ((data ?? []) as { key: string; value: string }[]).map((r) => [r.key, r.value]),
+  );
+  return parsePriceTiers(map["price_tiers"], Number(map["price_markup_percent"] ?? 0) || 0);
+}
+
+
+/** A coupon is unusable once its expiry moment has passed. */
+function isExpired(expiresAt: string | null | undefined) {
+  if (!expiresAt) return false;
+  const t = new Date(expiresAt).getTime();
+  return Number.isFinite(t) && t <= Date.now();
+}
+
+function computeDiscount(
+  coupon: { discount_type: string; discount_value: number; max_discount?: number | null } | null,
+  subtotal: number,
+) {
+  if (!coupon) return 0;
+  let raw =
+    coupon.discount_type === "percent"
+      ? (subtotal * Number(coupon.discount_value)) / 100
+      : Number(coupon.discount_value);
+  const cap = Number(coupon.max_discount ?? 0);
+  if (cap > 0) raw = Math.min(raw, cap);
+  return Math.max(0, Math.min(subtotal, Math.round(raw)));
+}
+
+
+export const validateCoupon = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => couponSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: coupon } = await supabase
+      .from("coupons")
+      .select("code, discount_type, discount_value, max_discount, is_active, expires_at")
+      .eq("code", data.code.toUpperCase())
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!coupon || isExpired(coupon.expires_at)) return { valid: false as const, discount: 0 };
+    return { valid: true as const, discount: computeDiscount(coupon, data.subtotal) };
+  });
+
+export const placeOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => placeOrderSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const ids = data.items.map((i) => i.product_id);
+    const { data: products, error: prodErr } = await supabase
+      .from("products")
+      .select("id, name_ar, name_en, price, discount_price, stock_qty")
+      .in("id", ids);
+    if (prodErr) throw new Error(prodErr.message);
+    if (!products?.length) throw new Error("No valid products in the order");
+
+    const tiers = await getPricingTiers(supabase);
+
+    const lines = data.items
+      .map((line) => {
+        const p = products.find((x) => x.id === line.product_id);
+        if (!p) return null;
+        const base =
+          p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.price)
+            ? Number(p.discount_price)
+            : Number(p.price);
+        const unit = applyPricing(base, tiers);
+
+        const listUnit = applyPricing(Number(p.price), tiers);
+        return {
+          product_id: p.id,
+          product_name: p.name_ar || p.name_en,
+          quantity: line.quantity,
+          unit_price: unit,
+          list_price: listUnit,
+        };
+      })
+      .filter((l): l is NonNullable<typeof l> => l !== null);
+    if (!lines.length) throw new Error("No valid products in the order");
+
+    const subtotal = lines.reduce((s, l) => s + l.unit_price * l.quantity, 0);
+
+    const { data: gov } = await supabase
+      .from("governorates")
+      .select("id, name_ar, shipping_cost")
+      .eq("id", data.governorate_id)
+      .maybeSingle();
+    const shipping = Number(gov?.shipping_cost ?? 0);
+
+    let discount = 0;
+    let couponCode: string | null = null;
+    if (data.coupon_code) {
+      const { data: coupon } = await supabase
+        .from("coupons")
+        .select("code, discount_type, discount_value, max_discount, expires_at")
+        .eq("code", data.coupon_code.toUpperCase())
+        .eq("is_active", true)
+        .maybeSingle();
+      if (coupon && !isExpired(coupon.expires_at)) {
+        discount = computeDiscount(coupon, subtotal);
+        couponCode = coupon.code;
+      }
+    }
+
+    // First-time customer: automatic 5% off, once, on their very first order.
+    const { count: previousOrders } = await supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_id", userId);
+    if (!previousOrders) {
+      discount += Math.round((subtotal * 5) / 100);
+    }
+    discount = Math.max(0, Math.min(subtotal, discount));
+
+    const total = Math.max(0, subtotal - discount) + shipping;
+
+
+    const { data: order, error: orderErr } = await supabase
+      .from("orders")
+      .insert({
+        customer_id: userId,
+        customer_name: data.full_name,
+        phone: data.phone,
+        governorate_id: data.governorate_id,
+        governorate_name: gov?.name_ar ?? "",
+        landmark: data.landmark,
+        preferred_delivery_time: data.preferred_delivery_time,
+        coupon_code: couponCode,
+        discount_amount: discount,
+        shipping_fee: shipping,
+        subtotal,
+        total_amount: total,
+        status: "review",
+      })
+      .select("id, order_number")
+      .single();
+    if (orderErr) throw new Error(orderErr.message);
+
+    const { error: itemsErr } = await supabase
+      .from("order_items")
+      .insert(
+        lines.map((l) => ({
+          order_id: order.id,
+          product_id: l.product_id,
+          product_name: l.product_name,
+          quantity: l.quantity,
+          unit_price: l.unit_price,
+        })),
+      );
+    if (itemsErr) throw new Error(itemsErr.message);
+
+    // Decrement stock (best effort, admin remains the source of truth).
+    for (const l of lines) {
+      const p = products.find((x) => x.id === l.product_id);
+      if (p) {
+        await supabase
+          .from("products")
+          .update({ stock_qty: Math.max(0, (p.stock_qty ?? 0) - l.quantity) })
+          .eq("id", p.id);
+      }
+    }
+
+    await notifyTelegram(supabase, {
+      orderNumber: order.order_number,
+      name: data.full_name,
+      phone: data.phone,
+      governorate: gov?.name_ar ?? "",
+      landmark: data.landmark,
+      lines,
+      subtotal,
+      shipping,
+      discount,
+      couponCode,
+      total,
+    });
+
+    // Admin notifications are created by a database trigger so they work on any host.
+
+
+
+    return { id: order.id, order_number: order.order_number };
+  });
+
+type NotifyPayload = {
+  orderNumber: number;
+  name: string;
+  phone: string;
+  governorate: string;
+  landmark: string;
+  lines: { product_name: string; quantity: number; unit_price?: number; list_price?: number }[];
+  subtotal?: number;
+  shipping?: number;
+  discount?: number;
+  couponCode?: string | null;
+  total: number;
+};
+
+const GATEWAY = "https://connector-gateway.lovable.dev/telegram";
+
+function tgHeaders(lovableKey: string, telegramKey: string) {
+  return {
+    Authorization: `Bearer ${lovableKey}`,
+    "X-Connection-Api-Key": telegramKey,
+    "Content-Type": "application/json",
+  };
+}
+
+/**
+ * Falls back to discovering the admin's chat id from recent bot updates
+ * (the admin only needs to press Start once in Telegram), then persists it.
+ */
+async function resolveChatId(
+  lovableKey: string,
+  telegramKey: string,
+  username: string,
+): Promise<string | null> {
+  const res = await fetch(`${GATEWAY}/getUpdates`, {
+    method: "POST",
+    headers: tgHeaders(lovableKey, telegramKey),
+    body: JSON.stringify({ limit: 100 }),
+  });
+  if (!res.ok) return null;
+  const json = (await res.json()) as {
+    result?: { message?: { chat?: { id?: number; username?: string } } }[];
+  };
+  const wanted = username.replace(/^@/, "").toLowerCase();
+  const hit = (json.result ?? []).find(
+    (u) => u.message?.chat?.username?.toLowerCase() === wanted,
+  );
+  const id = hit?.message?.chat?.id;
+  if (!id) return null;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
+      .from("store_settings")
+      .upsert({ key: "telegram_chat_id", value: String(id) });
+  } catch (err) {
+    console.error("Failed to persist telegram chat id", err);
+  }
+  return String(id);
+}
+
+/** Sends a plain text message to the store's Telegram admin chat. */
+async function sendTelegramText(
+  supabase: { from: (t: string) => any },
+  text: string,
+): Promise<void> {
+  try {
+    const lovableKey = process.env["LOVABLE_API_KEY"];
+    const telegramKey = process.env["TELEGRAM_API_KEY"];
+    if (!lovableKey || !telegramKey) return;
+
+    const { data: settings } = await supabase
+      .from("store_settings")
+      .select("key, value")
+      .in("key", ["telegram_chat_id", "telegram_admin_username"]);
+    const map = new Map<string, string>(
+      (settings ?? []).map((s: { key: string; value: string }) => [s.key, s.value]),
+    );
+    let chatId = map.get("telegram_chat_id")?.trim();
+    if (!chatId) {
+      chatId =
+        (await resolveChatId(
+          lovableKey,
+          telegramKey,
+          map.get("telegram_admin_username")?.trim() || "HayderZash",
+        )) ?? undefined;
+    }
+    if (!chatId) return;
+
+    const res = await fetch(`${GATEWAY}/sendMessage`, {
+      method: "POST",
+      headers: tgHeaders(lovableKey, telegramKey),
+      body: JSON.stringify({ chat_id: chatId, text }),
+    });
+
+    if (!res.ok) {
+      console.error(`Telegram notify failed [${res.status}]: ${await res.text()}`);
+    }
+  } catch (err) {
+    console.error("Telegram notify error", err);
+  }
+}
+
+async function notifyTelegram(
+  supabase: { from: (t: string) => any },
+  payload: NotifyPayload,
+): Promise<void> {
+  const iqd = (n: number) => `${Math.round(n).toLocaleString("en-US")} د.ع`;
+  const itemLines = payload.lines
+    .map((l) => {
+      const unit = Number(l.unit_price ?? 0);
+      const list = Number(l.list_price ?? unit);
+      const off = list > unit && list > 0 ? Math.round(((list - unit) / list) * 100) : 0;
+      const pricePart = unit
+        ? off > 0
+          ? ` — ${iqd(unit)} (بدل ${iqd(list)} خصم ${off}%)`
+          : ` — ${iqd(unit)}`
+        : "";
+      return `• ${l.product_name} × ${l.quantity}${pricePart}`;
+    })
+    .join("\n");
+
+  const itemsSavings = payload.lines.reduce(
+    (s, l) => s + Math.max(0, Number(l.list_price ?? 0) - Number(l.unit_price ?? 0)) * l.quantity,
+    0,
+  );
+
+  const text = [
+    `📦 طلب جديد # ${payload.orderNumber}`,
+    `👤 الزبون: ${payload.name}`,
+    `📞 الهاتف: ${payload.phone}`,
+    `📍 المحافظة والنقطة الدالة: ${payload.governorate} - ${payload.landmark}`,
+    `🛒 المنتجات:\n${itemLines}`,
+    itemsSavings > 0 ? `🏷️ خصم المنتجات المخفّضة: -${iqd(itemsSavings)}` : "",
+    payload.subtotal != null ? `🧾 المجموع الفرعي: ${iqd(payload.subtotal)}` : "",
+    payload.discount
+      ? `🎁 خصم${payload.couponCode ? ` (كوبون ${payload.couponCode})` : ""}: -${iqd(payload.discount)}`
+      : "",
+    payload.shipping != null ? `🚚 التوصيل: ${iqd(payload.shipping)}` : "",
+    `💰 المبلغ الإجمالي مع التوصيل: ${iqd(payload.total)}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  await sendTelegramText(supabase, text);
+}
+
+
+const cancelSchema = z.object({ order_id: z.string().uuid() });
+
+
+/** Customers may cancel their own order only while it is still under review. */
+export const cancelOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => cancelSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: result, error } = await supabase.rpc("cancel_own_order", {
+      _order_id: data.order_id,
+    });
+    if (error) throw new Error(error.message);
+    if (result === "CANNOT_CANCEL") throw new Error("CANNOT_CANCEL");
+    if (result !== "OK") throw new Error("Order not found");
+    return { ok: true as const };
+  });
+
+
+const addItemSchema = z.object({
+  order_id: z.string().uuid(),
+  product_id: z.string().uuid(),
+  quantity: z.number().int().min(1).max(999),
+});
+
+/** Customer adds a product to an existing order, allowed only before preparation starts. */
+export const addOrderItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => addItemSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: order, error } = await supabase
+      .from("orders")
+      .select("id, order_number, status, customer_id, customer_name, phone, shipping_fee, discount_amount, governorate_name, landmark")
+      .eq("id", data.order_id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!order || order.customer_id !== userId) throw new Error("Order not found");
+    if (order.status !== "review") throw new Error("CANNOT_MODIFY");
+
+    const { data: product } = await supabase
+      .from("products")
+      .select("id, name_ar, name_en, price, discount_price")
+      .eq("id", data.product_id)
+      .maybeSingle();
+    if (!product) throw new Error("Product not found");
+
+    const baseUnit =
+      product.discount_price != null &&
+      Number(product.discount_price) > 0 &&
+      Number(product.discount_price) < Number(product.price)
+        ? Number(product.discount_price)
+        : Number(product.price);
+    const unit = applyPricing(baseUnit, await getPricingTiers(supabase));
+
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: existing } = await supabaseAdmin
+      .from("order_items")
+      .select("id, quantity")
+      .eq("order_id", order.id)
+      .eq("product_id", product.id)
+      .eq("is_unavailable", false)
+      .maybeSingle();
+
+    if (existing) {
+      await supabaseAdmin
+        .from("order_items")
+        .update({ quantity: Number(existing.quantity) + data.quantity, unit_price: unit })
+        .eq("id", existing.id);
+    } else {
+      await supabaseAdmin.from("order_items").insert({
+        order_id: order.id,
+        product_id: product.id,
+        product_name: product.name_ar || product.name_en,
+        quantity: data.quantity,
+        unit_price: unit,
+      });
+    }
+
+    const { data: lines } = await supabaseAdmin
+      .from("order_items")
+      .select("product_name, quantity, unit_price, is_unavailable")
+      .eq("order_id", order.id);
+
+    const active = (lines ?? []).filter((l) => !l.is_unavailable);
+    const subtotal = active.reduce((s, l) => s + Number(l.unit_price) * Number(l.quantity), 0);
+    const discount = Math.min(Number(order.discount_amount ?? 0), subtotal);
+    const total = Math.max(0, subtotal - discount) + Number(order.shipping_fee ?? 0);
+
+    const { error: updErr } = await supabaseAdmin
+      .from("orders")
+      .update({ subtotal, discount_amount: discount, total_amount: total })
+      .eq("id", order.id)
+      .eq("status", "review");
+    if (updErr) throw new Error(updErr.message);
+
+    const itemLines = active.map((l) => `• ${l.product_name} × ${l.quantity}`).join("\n");
+    await sendTelegramText(supabase, [
+      `✏️ تعديل طلب # ${order.order_number} — إضافة منتج`,
+      `👤 الزبون: ${order.customer_name}`,
+      `📞 الهاتف: ${order.phone}`,
+      `📍 ${order.governorate_name} - ${order.landmark}`,
+      `➕ تمت إضافة: ${product.name_ar || product.name_en} × ${data.quantity}`,
+      `🛒 القائمة النهائية:\n${itemLines}`,
+      `💰 المبلغ الإجمالي مع التوصيل: ${total.toLocaleString("en-US")} د.ع`,
+    ].join("\n"));
+
+    return { ok: true as const, total };
+  });

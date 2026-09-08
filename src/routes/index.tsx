@@ -1,0 +1,232 @@
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ChevronLeft, RefreshCw } from "lucide-react";
+import { useMemo, useState } from "react";
+
+import { DealsTicker } from "@/components/DealsTicker";
+import { NewsCarousel } from "@/components/NewsCarousel";
+import { Pagination } from "@/components/Pagination";
+import { ProductCard, ProductCardSkeleton } from "@/components/ProductCard";
+import { Button } from "@/components/ui/button";
+import { discountPercent } from "@/lib/format";
+import { CategoryIcon } from "@/lib/category-icons";
+import { categoryPathLabel } from "@/lib/category-path";
+import { localized, useLang } from "@/lib/i18n";
+import {
+  bannersQuery,
+  categoriesQuery,
+  popularProductIdsQuery,
+  productsQuery,
+  settingsQuery,
+} from "@/lib/queries";
+import { rotationSeed, seededShuffle } from "@/lib/shuffle";
+
+
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "SmartTech | إلكترونيات وكهربائيات وطاقة شمسية" },
+      {
+        name: "description",
+        content:
+          "تسوق الإلكترونيات والمواد الكهربائية ومنظومات الطاقة الشمسية ومواد البناء مع توصيل لكل محافظات العراق.",
+      },
+      { property: "og:title", content: "SmartTech | تسوق أونلاين في العراق" },
+      {
+        property: "og:description",
+        content: "إلكترونيات، كهربائيات، طاقة شمسية ومواد بناء مع توصيل لجميع المحافظات.",
+      },
+    ],
+  }),
+  component: Home,
+});
+
+function Section({
+  title,
+  children,
+  to,
+}: {
+  title: string;
+  children: React.ReactNode;
+  to?: { to: string; search?: Record<string, string> };
+}) {
+  const { t } = useLang();
+  return (
+    <section className="mt-7">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-bold">{title}</h2>
+        {to && (
+          <Link
+            to="/search"
+            search={to.search ?? {}}
+            className="flex items-center gap-0.5 text-sm font-medium text-primary"
+          >
+            {t("viewAll")}
+            <ChevronLeft className="size-4 rtl:rotate-0 ltr:rotate-180" />
+          </Link>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Grid({ children }: { children: React.ReactNode }) {
+  return <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{children}</div>;
+}
+
+function Home() {
+  const { lang, t } = useLang();
+  const products = useQuery(productsQuery);
+  const categories = useQuery(categoriesQuery);
+  const banners = useQuery(bannersQuery);
+
+  const settings = useQuery(settingsQuery);
+  const popularIds = useQuery(popularProductIdsQuery);
+  const [bump, setBump] = useState(0);
+  const [page, setPage] = useState(1);
+
+  const all = products.data ?? [];
+  const rotateHours = Number(settings.data?.["home_rotate_hours"] ?? 6) || 6;
+  const PER_PAGE = 20;
+  const PAGES = 5;
+
+  const picks = useMemo(
+    () => seededShuffle(all, rotationSeed(rotateHours) + bump * 7919).slice(0, PER_PAGE * PAGES),
+    [all, rotateHours, bump],
+  );
+  const totalPages = Math.max(1, Math.ceil(picks.length / PER_PAGE));
+  const pageItems = picks.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+
+  const byId = useMemo(() => new Map(all.map((p) => [p.id, p])), [all]);
+  const popular = (popularIds.data ?? [])
+    .map((id) => byId.get(id))
+    .filter((p): p is NonNullable<typeof p> => !!p)
+    .slice(0, 8);
+
+  const deals = all.filter((p) => discountPercent(p) > 0).slice(0, 8);
+  const lastPieces = all.filter((p) => p.stock_qty > 0 && p.stock_qty <= 2).slice(0, 8);
+  const featured = all.filter((p) => p.is_featured).slice(0, 8);
+  const roots = (categories.data ?? []).filter((c) => !c.parent_id);
+  const catPath = (id: string | null) => categoryPathLabel(lang, categories.data ?? [], id);
+
+
+  return (
+    <div>
+      <h1 className="sr-only">SmartTech — إلكترونيات وكهربائيات وطاقة شمسية</h1>
+
+      {banners.data && banners.data.length > 0 && (
+        <NewsCarousel items={banners.data as never} />
+      )}
+
+      <DealsTicker products={all as never} />
+
+      {roots.length > 0 && (
+        <Section title={t("shopByCategory")}>
+          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+            {roots.map((c) => (
+              <Link
+                key={c.id}
+                to="/search"
+                search={{ cat: c.id }}
+
+                className="flex w-24 shrink-0 flex-col items-center gap-2"
+              >
+                <span className="flex size-20 items-center justify-center overflow-hidden rounded-2xl border bg-sand">
+                  <CategoryIcon
+                    icon={c.icon}
+                    imageUrl={c.image_url}
+                    fallback={localized(lang, c.name_ar, c.name_en).charAt(0)}
+                  />
+                </span>
+                <span className="line-clamp-2 text-center text-xs font-medium">
+                  {localized(lang, c.name_ar, c.name_en)}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </Section>
+      )}
+
+
+      {products.isLoading && (
+        <Section title={t("latest")}>
+          <Grid>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </Grid>
+        </Section>
+      )}
+
+      {featured.length > 0 && (
+        <Section title={t("featured")}>
+          <Grid>
+            {featured.map((p) => (
+              <ProductCard key={p.id} product={p} categoryPath={catPath(p.category_id)} />
+            ))}
+          </Grid>
+        </Section>
+      )}
+
+      {popular.length > 0 && (
+        <Section title="الأكثر طلباً">
+          <Grid>
+            {popular.map((p) => (
+              <ProductCard key={p.id} product={p} categoryPath={catPath(p.category_id)} />
+            ))}
+          </Grid>
+        </Section>
+      )}
+
+      {picks.length > 0 && (
+        <section className="mt-7">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-lg font-bold">تشكيلة مختارة</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setBump((b) => b + 1);
+                setPage(1);
+              }}
+            >
+              <RefreshCw className="size-4" /> تغيير المعروض
+            </Button>
+          </div>
+          <Grid>
+            {pageItems.map((p) => (
+              <ProductCard key={p.id} product={p} categoryPath={catPath(p.category_id)} />
+            ))}
+          </Grid>
+          <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+        </section>
+      )}
+
+
+      {deals.length > 0 && (
+        <Section title={t("deals")}>
+          <Grid>
+            {deals.map((p) => (
+              <ProductCard key={p.id} product={p} categoryPath={catPath(p.category_id)} />
+            ))}
+          </Grid>
+        </Section>
+      )}
+
+      {lastPieces.length > 0 && (
+        <Section title={t("lastPieces")}>
+          <Grid>
+            {lastPieces.map((p) => (
+              <ProductCard key={p.id} product={p} categoryPath={catPath(p.category_id)} />
+            ))}
+          </Grid>
+        </Section>
+      )}
+
+      {!products.isLoading && all.length === 0 && (
+        <p className="py-16 text-center text-sm text-muted-foreground">{t("noProducts")}</p>
+      )}
+    </div>
+  );
+}
