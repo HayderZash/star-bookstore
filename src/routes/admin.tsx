@@ -1452,7 +1452,11 @@ function AdminPage() {
               <Input dir="ltr" inputMode="numeric" placeholder="أجرة التوصيل" value={gform.shipping_cost} onChange={(e) => setGform({ ...gform, shipping_cost: e.target.value })} />
               <Button
                 onClick={async () => {
-                  if (!gform.name_ar.trim()) return toast.error("أدخل اسم المحافظة");
+                  if (!gform.name_ar.trim()) {
+                    toast.error("أدخل اسم المحافظة");
+                    return;
+                  }
+
                   const { error } = await supabase.from("governorates").insert({
                     name_ar: gform.name_ar.trim(),
                     name_en: (gform.name_en || gform.name_ar).trim(),
