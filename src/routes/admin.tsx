@@ -360,6 +360,8 @@ function AdminPage() {
   const reviews = useQuery(allReviewsQuery);
   const alerts = useQuery(stockAlertsQuery);
   const governorates = useQuery(governoratesQuery);
+  const [gform, setGform] = useState({ name_ar: "", name_en: "", shipping_cost: "" });
+
   const banners = useQuery(bannersQuery);
   const settings = useQuery(settingsQuery);
   const chatInbox = useQuery(allChatsQuery);
