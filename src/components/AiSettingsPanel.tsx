@@ -145,11 +145,30 @@ export function AiSettingsPanel() {
 
         <div className="space-y-2 sm:col-span-2">
           <Label>الكلمة السرية لدالة Netlify (AI_PROXY_SECRET)</Label>
-          <Input
-            dir="ltr"
-            value={value("proxy_secret")}
-            onChange={(e) => set("proxy_secret", e.target.value.trim())}
-          />
+          <div className="flex gap-2">
+            <Input
+              dir="ltr"
+              value={value("proxy_secret")}
+              onChange={(e) => set("proxy_secret", e.target.value.trim())}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const v = value("proxy_secret");
+                if (!v) return;
+                void navigator.clipboard.writeText(v);
+                toast.success("تم نسخ الكلمة السرية");
+              }}
+            >
+              نسخ
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            هذه هي قيمة AI_PROXY_SECRET. انسخها وأضفها في Netlify ← Site configuration ←
+            Environment variables باسم <span dir="ltr">AI_PROXY_SECRET</span> ثم أعد النشر ليعمل
+            المساعد الذكي على موقعك المنشور.
+          </p>
         </div>
       </div>
 

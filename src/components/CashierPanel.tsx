@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Minus, Plus, Printer, Search, Trash2 } from "lucide-react";
+import { Minus, Plus, Printer, Search, Trash2, RotateCcw } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -318,6 +318,8 @@ export function CashierPanel() {
         </div>
       </div>
 
+      <SavedSales onOpen={(r) => setReceipt(r)} />
+
       {receipt && (
         <div className="space-y-3 rounded-2xl border bg-card p-4">
           <div className="flex flex-wrap items-center gap-2">
@@ -361,6 +363,116 @@ export function CashierPanel() {
             className="h-[60vh] w-full rounded-lg border bg-white"
             srcDoc={mode === "mini" ? miniHtml(receipt, st) : fullHtml(receipt, st)}
           />
+        </div>
+      )}
+    </div>
+  );
+}
+
+type SavedSale = {
+  id: string;
+  sale_number: number;
+  created_at: string;
+  customer_name: string;
+  phone: string;
+  subtotal: number;
+  discount_amount: number;
+  total_amount: number;
+  pos_sale_items: { product_name: string; quantity: number; unit_price: number }[];
+};
+
+/** Saved cashier invoices: review, reprint, or delete (stock goes back). */
+function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
+  const qc = useQueryClient();
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const sales = useQuery({
+    queryKey: ["pos-sales"],
+    queryFn: async (): Promise<SavedSale[]> => {
+      const { data, error } = await supabase
+        .from("pos_sales")
+        .select(
+          "id, sale_number, created_at, customer_name, phone, subtotal, discount_amount, total_amount, pos_sale_items(product_name, quantity, unit_price)",
+        )
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as unknown as SavedSale[];
+    },
+  });
+
+  const remove = async (s: SavedSale) => {
+    if (!window.confirm(`حذف الفاتورة #${s.sale_number}؟ سترجع الكميات للمخزون وتُحذف من الأرباح.`))
+      return;
+    setBusyId(s.id);
+    const { error } = await supabase.rpc("admin_delete_pos_sale", { _sale_id: s.id });
+    setBusyId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("تم حذف الفاتورة وإرجاع الكميات للمخزون");
+    void qc.invalidateQueries({ queryKey: ["pos-sales"] });
+    void qc.invalidateQueries({ queryKey: ["products"] });
+    void qc.invalidateQueries({ queryKey: ["profit-report"] });
+  };
+
+  return (
+    <div className="space-y-3 rounded-2xl border bg-card p-4">
+      <h3 className="text-base font-semibold">الفواتير المحفوظة</h3>
+      {sales.isLoading ? (
+        <p className="text-sm text-muted-foreground">جاري التحميل...</p>
+      ) : !sales.data?.length ? (
+        <p className="text-sm text-muted-foreground">لا توجد فواتير بعد.</p>
+      ) : (
+        <div className="space-y-2">
+          {sales.data.map((s) => (
+            <div key={s.id} className="flex flex-wrap items-center gap-2 rounded-xl border p-2 text-sm">
+              <span className="font-bold">#{s.sale_number}</span>
+              <span className="text-xs text-muted-foreground">
+                {new Date(s.created_at).toLocaleString("ar-IQ-u-nu-latn")}
+              </span>
+              {s.customer_name && <span className="text-xs">{s.customer_name}</span>}
+              <span className="text-xs text-muted-foreground">
+                {s.pos_sale_items?.length ?? 0} مادة
+              </span>
+              <span className="ms-auto font-bold text-primary">{money(s.total_amount)}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  onOpen({
+                    sale_number: Number(s.sale_number),
+                    created_at: s.created_at,
+                    customer_name: s.customer_name ?? "",
+                    phone: s.phone ?? "",
+                    lines: (s.pos_sale_items ?? []).map((i, idx) => ({
+                      id: `${s.id}-${idx}`,
+                      name: i.product_name,
+                      price: Number(i.unit_price) || 0,
+                      qty: Number(i.quantity) || 0,
+                      stock: 0,
+                    })),
+                    subtotal: Number(s.subtotal) || 0,
+                    discount: Number(s.discount_amount) || 0,
+                    total: Number(s.total_amount) || 0,
+                  })
+                }
+              >
+                <RotateCcw className="me-1 size-4" />
+                عرض وطباعة
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive"
+                disabled={busyId === s.id}
+                onClick={() => void remove(s)}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          ))}
         </div>
       )}
     </div>
