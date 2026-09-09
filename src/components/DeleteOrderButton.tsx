@@ -24,13 +24,13 @@ export function DeleteOrderButton({
   const run = async () => {
     if (word.trim() !== CONFIRM) return;
     setBusy(true);
-    const { error } = await supabase.from("orders").delete().eq("id", orderId);
+    const { error } = await supabase.rpc("admin_delete_order", { _order_id: orderId });
     setBusy(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success(`تم حذف الطلب #${orderNumber}`);
+    toast.success(`تم حذف الطلب #${orderNumber} وإرجاع الكميات للمخزون`);
     setOpen(false);
     setWord("");
     onDone();
@@ -53,7 +53,7 @@ export function DeleteOrderButton({
   return (
     <div className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/5 p-2">
       <span className="text-xs text-muted-foreground">
-        اكتب «{CONFIRM}» لتأكيد حذف الطلب نهائياً
+        اكتب «{CONFIRM}» لتأكيد حذف الطلب نهائياً — سترجع الكميات للمخزون ويُحذف من الأرباح
       </span>
       <Input
         value={word}
