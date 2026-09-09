@@ -732,6 +732,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_order: { Args: { _order_id: string }; Returns: string }
+      admin_delete_pos_sale: { Args: { _sale_id: string }; Returns: string }
       admin_set_item_unavailable: {
         Args: { _flag: boolean; _item_id: string }
         Returns: number
