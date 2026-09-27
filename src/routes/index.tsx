@@ -118,8 +118,8 @@ function Home() {
     <div>
       <h1 className="sr-only">مكتبة النجم — كتب وقرطاسية ولوازم مدرسية</h1>
 
-      <section className="animate-rise grid gap-3 md:grid-cols-3">
-        <div className="gradient-hero relative overflow-hidden rounded-3xl p-6 text-primary-foreground shadow-[var(--shadow-lift)] md:col-span-2 md:p-8">
+      <section className="animate-rise">
+        <div className="gradient-hero relative overflow-hidden rounded-3xl p-6 text-primary-foreground shadow-[var(--shadow-lift)] md:p-8">
           <span className="pointer-events-none absolute -top-16 -end-10 size-48 rounded-full bg-brand-yellow/25 blur-2xl" />
           <span className="pointer-events-none absolute -bottom-20 -start-10 size-56 rounded-full bg-brand-blue/30 blur-2xl" />
           <img
@@ -152,21 +152,6 @@ function Home() {
             >
               {t("deals")}
             </Link>
-          </div>
-        </div>
-
-        <div className="grid gap-3">
-          <div className="gradient-warm card-lift rounded-3xl p-5 text-warning-foreground">
-            <p className="text-2xl font-extrabold">{all.length > 0 ? `${all.length}+` : "…"}</p>
-            <p className="text-sm font-semibold opacity-80">
-              {lang === "ar" ? "منتج متوفر الآن" : "products available"}
-            </p>
-          </div>
-          <div className="gradient-fresh card-lift rounded-3xl p-5 text-primary-foreground">
-            <p className="text-2xl font-extrabold">{roots.length > 0 ? roots.length : "…"}</p>
-            <p className="text-sm font-semibold opacity-90">
-              {lang === "ar" ? "قسم للتسوق" : "categories to explore"}
-            </p>
           </div>
         </div>
       </section>
