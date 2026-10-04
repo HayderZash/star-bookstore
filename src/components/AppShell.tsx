@@ -217,7 +217,7 @@ function SideMenu({
                 <ScanBarcode className="size-4 shrink-0" />
                 الكاشير
               </Link>
-              <Link to="/admin" search={{ tab: "orders" }} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground">
+              <Link to="/manage-orders" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground">
                 <ClipboardList className="size-4 shrink-0" />
                 الطلبات
               </Link>
@@ -336,7 +336,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             )}
             {isAdmin && (
-              <Link to="/admin" search={{ tab: "orders" }} className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground">
+              <Link to="/manage-orders" className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground">
                 <ClipboardList className="size-4" />
                 الطلبات
               </Link>

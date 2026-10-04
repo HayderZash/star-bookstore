@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ChevronDown,
@@ -32,7 +32,6 @@ import { BulkDeleteProducts } from "@/components/BulkDeleteProducts";
 import { DeleteOrderButton } from "@/components/DeleteOrderButton";
 import { OrderAdminTools } from "@/components/OrderAdminTools";
 import { ProfitsExcel } from "@/components/ProfitsExcel";
-import { CashierPanel } from "@/components/CashierPanel";
 import { ProfitsPanel } from "@/components/ProfitsPanel";
 import { CategoriesExcel } from "@/components/CategoriesExcel";
 import { ProductsExcel } from "@/components/ProductsExcel";
@@ -88,7 +87,7 @@ export const Route = createFileRoute("/admin")({
       { property: "og:description", content: "إدارة المتجر بالكامل من مكان واحد." },
     ],
   }),
-  component: AdminPage,
+  component: () => <AdminPage />,
 });
 
 /** Decodes a file to a bitmap-ish source, with a Safari-friendly fallback. */
@@ -353,7 +352,7 @@ const emptyProduct = {
 
 
 
-function AdminPage() {
+export function AdminPage({ ordersOnly = false }: { ordersOnly?: boolean }) {
   const { lang } = useLang();
   const { isAdmin, loading } = useAuth();
   const qc = useQueryClient();
@@ -418,17 +417,18 @@ function AdminPage() {
   const addCoupon = useServerFn(createCoupon);
   const sendDealNotice = useServerFn(announceDeal);
   const sendRestockNotice = useServerFn(notifyRestock);
-  const [tab, setTab] = useState("orders");
-  const urlTab = Route.useSearch({ select: (s) => s.tab });
+  const [tab, setTab] = useState(ordersOnly ? "orders" : "products");
+  const urlTab = useSearch({ strict: false, select: (s) => (s as { tab?: string }).tab });
   const [q, setQ] = useState("");
   const [scope, setScope] = useState<"all" | "products" | "orders">("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [orderPage, setOrderPage] = useState(1);
 
   useEffect(() => {
+    if (ordersOnly) return setTab("orders");
     const stored = urlTab ?? localStorage.getItem("admin_tab");
-    if (stored) setTab(stored);
-  }, [urlTab]);
+    if (stored && stored !== "orders" && stored !== "cashier") setTab(stored);
+  }, [urlTab, ordersOnly]);
 
   useEffect(() => {
     setProdPage(1);
@@ -621,9 +621,7 @@ function AdminPage() {
 
 
   const sections = [
-    { value: "cashier", label: "الكاشير", desc: "بيع مباشر وطباعة الفاتورة", icon: ShoppingBasket },
     { value: "profits", label: "الأرباح", desc: "تقرير الأرباح للمواد المباعة", icon: Calculator },
-    { value: "orders", label: "الطلبات", desc: "متابعة الطلبات وتحديث حالتها", icon: ClipboardList },
     { value: "products", label: "المنتجات", desc: "إضافة المنتجات واستيرادها من Excel", icon: Package },
     { value: "categories", label: "الأقسام", desc: "تنظيم أقسام المتجر", icon: LayoutGrid },
     { value: "shipping", label: "المحافظات", desc: "أجور التوصيل لكل محافظة", icon: Truck },
@@ -634,6 +632,7 @@ function AdminPage() {
     { value: "settings", label: "الإعدادات", desc: "معلومات المتجر والتواصل", icon: Settings },
   ];
   const active = sections.find((s) => s.value === tab) ?? sections[0]!;
+  const orderMode = ordersOnly;
 
   const changeTab = (v: string) => {
     setTab(v);
@@ -644,8 +643,10 @@ function AdminPage() {
     <div className="space-y-6">
       <header className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <div className="min-w-0 space-y-1">
-          <h1 className="truncate text-xl font-bold">لوحة الإدارة</h1>
-          <p className="text-xs text-muted-foreground">إدارة المتجر مقسّمة إلى أقسام مستقلة</p>
+          <h1 className="truncate text-xl font-bold">{orderMode ? "الطلبات" : "لوحة الإدارة"}</h1>
+          <p className="text-xs text-muted-foreground">
+            {orderMode ? "متابعة طلبات الزبائن وتحديث حالتها" : "إدارة المتجر مقسّمة إلى أقسام مستقلة"}
+          </p>
         </div>
         <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[18rem_auto_auto]">
           <div className="relative">
@@ -692,6 +693,7 @@ function AdminPage() {
         </p>
       )}
 
+      {!orderMode && (
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">نظرة عامة</h2>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -767,14 +769,14 @@ function AdminPage() {
           </div>
         </div>
       </section>
-
+      )}
 
       <Tabs
         value={tab}
         onValueChange={changeTab}
-        className="grid items-start gap-6 lg:grid-cols-[220px_minmax(0,1fr)]"
+        className={cn("grid items-start gap-6", !orderMode && "lg:grid-cols-[220px_minmax(0,1fr)]")}
       >
-        <aside className="space-y-3 lg:sticky lg:top-20">
+        <aside className={cn("space-y-3 lg:sticky lg:top-20", orderMode && "hidden")}>
           <h2 className="text-sm font-semibold text-muted-foreground">أقسام الإدارة</h2>
           <TabsList className="grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 sm:grid-cols-4 lg:grid-cols-1">
             {sections.map((s) => (
@@ -791,7 +793,7 @@ function AdminPage() {
         </aside>
 
         <div className="min-w-0 space-y-4">
-        <div className="space-y-1 border-b pb-4 lg:border-b-0 lg:pb-0">
+        <div className={cn("space-y-1 border-b pb-4 lg:border-b-0 lg:pb-0", orderMode && "hidden")}>
           <h2 className="text-base font-bold">{active.label}</h2>
           <p className="text-xs text-muted-foreground">{active.desc}</p>
         </div>
@@ -799,9 +801,6 @@ function AdminPage() {
 
 
         {/* ORDERS */}
-        <TabsContent value="cashier" className="space-y-4">
-          <CashierPanel />
-        </TabsContent>
 
         <TabsContent value="profits" className="space-y-4">
           <ProfitsPanel />

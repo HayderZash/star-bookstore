@@ -34,7 +34,7 @@ function PosPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-black">الكاشير</h1>
-        <Link to="/admin" search={{ tab: "orders" }} className="text-sm font-semibold text-primary">
+        <Link to="/manage-orders" className="text-sm font-semibold text-primary">
           الطلبات ←
         </Link>
       </div>
