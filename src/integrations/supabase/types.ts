@@ -498,6 +498,7 @@ export type Database = {
       }
       products: {
         Row: {
+          barcode: string | null
           catalog_pdf_url: string | null
           category_id: string | null
           cost_price: number
@@ -517,6 +518,7 @@ export type Database = {
           stock_qty: number
         }
         Insert: {
+          barcode?: string | null
           catalog_pdf_url?: string | null
           category_id?: string | null
           cost_price?: number
@@ -536,6 +538,7 @@ export type Database = {
           stock_qty?: number
         }
         Update: {
+          barcode?: string | null
           catalog_pdf_url?: string | null
           category_id?: string | null
           cost_price?: number
