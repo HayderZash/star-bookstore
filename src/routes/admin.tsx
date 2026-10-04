@@ -77,6 +77,8 @@ import {
 
 
 export const Route = createFileRoute("/admin")({
+  validateSearch: (s: Record<string, unknown>): { tab?: string } =>
+    typeof s["tab"] === "string" ? { tab: s["tab"] } : {},
   head: () => ({
     meta: [
       { title: "لوحة الإدارة | مكتبة النجم" },
@@ -417,15 +419,16 @@ function AdminPage() {
   const sendDealNotice = useServerFn(announceDeal);
   const sendRestockNotice = useServerFn(notifyRestock);
   const [tab, setTab] = useState("orders");
+  const urlTab = Route.useSearch({ select: (s) => s.tab });
   const [q, setQ] = useState("");
   const [scope, setScope] = useState<"all" | "products" | "orders">("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [orderPage, setOrderPage] = useState(1);
 
   useEffect(() => {
-    const stored = localStorage.getItem("admin_tab");
+    const stored = urlTab ?? localStorage.getItem("admin_tab");
     if (stored) setTab(stored);
-  }, []);
+  }, [urlTab]);
 
   useEffect(() => {
     setProdPage(1);
