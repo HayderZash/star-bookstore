@@ -23,7 +23,6 @@ import {
   Tag,
   PackageSearch,
   ScanBarcode,
-  ClipboardList,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
