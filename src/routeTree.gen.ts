@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as DealsRouteImport } from './routes/deals'
+import { Route as ManageOrdersRouteImport } from './routes/manage-orders'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as SearchRouteImport } from './routes/search'
@@ -51,6 +52,11 @@ const CategoriesRoute = CategoriesRouteImport.update({
 const DealsRoute = DealsRouteImport.update({
   id: '/deals',
   path: '/deals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManageOrdersRoute = ManageOrdersRouteImport.update({
+  id: '/manage-orders',
+  path: '/manage-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersRoute = OrdersRouteImport.update({
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
   '/deals': typeof DealsRoute
+  '/manage-orders': typeof ManageOrdersRoute
   '/orders': typeof OrdersRoute
   '/pos': typeof PosRoute
   '/search': typeof SearchRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
   '/deals': typeof DealsRoute
+  '/manage-orders': typeof ManageOrdersRoute
   '/orders': typeof OrdersRoute
   '/pos': typeof PosRoute
   '/search': typeof SearchRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/cart': typeof CartRoute
   '/categories': typeof CategoriesRoute
   '/deals': typeof DealsRoute
+  '/manage-orders': typeof ManageOrdersRoute
   '/orders': typeof OrdersRoute
   '/pos': typeof PosRoute
   '/search': typeof SearchRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/categories'
     | '/deals'
+    | '/manage-orders'
     | '/orders'
     | '/pos'
     | '/search'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/categories'
     | '/deals'
+    | '/manage-orders'
     | '/orders'
     | '/pos'
     | '/search'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/categories'
     | '/deals'
+    | '/manage-orders'
     | '/orders'
     | '/pos'
     | '/search'
@@ -190,6 +202,7 @@ export interface RootRouteChildren {
   CartRoute: typeof CartRoute
   CategoriesRoute: typeof CategoriesRoute
   DealsRoute: typeof DealsRoute
+  ManageOrdersRoute: typeof ManageOrdersRoute
   OrdersRoute: typeof OrdersRoute
   PosRoute: typeof PosRoute
   SearchRoute: typeof SearchRoute
@@ -241,6 +254,13 @@ declare module '@tanstack/react-router' {
       path: '/deals'
       fullPath: '/deals'
       preLoaderRoute: typeof DealsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manage-orders': {
+      id: '/manage-orders'
+      path: '/manage-orders'
+      fullPath: '/manage-orders'
+      preLoaderRoute: typeof ManageOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders': {
@@ -302,6 +322,7 @@ const rootRouteChildren: RootRouteChildren = {
   CartRoute: CartRoute,
   CategoriesRoute: CategoriesRoute,
   DealsRoute: DealsRoute,
+  ManageOrdersRoute: ManageOrdersRoute,
   OrdersRoute: OrdersRoute,
   PosRoute: PosRoute,
   SearchRoute: SearchRoute,
