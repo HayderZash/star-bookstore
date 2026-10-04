@@ -230,13 +230,13 @@ export function CashierPanel() {
     win.print();
     if (autoDrawer) await openDrawer().catch(() => false);
   };
-
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return [];
-    return (products.data ?? [])
-      .filter((p) => [p.name_ar, p.name_en, p.sku].join(" ").toLowerCase().includes(needle))
-      .slice(0, 8);
+    const all = products.data ?? [];
+    if (!needle) return all.slice(0, 60);
+    return all
+      .filter((p) => [p.name_ar, p.name_en, p.sku, p.barcode ?? ""].join(" ").toLowerCase().includes(needle))
+      .slice(0, 60);
   }, [q, products.data]);
 
   const add = (p: Product) => {
@@ -332,104 +332,141 @@ export function CashierPanel() {
         }}
         onDrawer={() => void runDrawer()}
       />
-      <div className="rounded-2xl border bg-card p-4 space-y-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            data-scan-target=""
-            onKeyDown={(e) => {
-              if (e.key !== "Enter" || !q.trim()) return;
-              e.preventDefault();
-              if (byCode.has(q.trim().toLowerCase())) handleScan(q);
-              else if (results[0]) add(results[0]);
-            }}
-            placeholder="امسح الباركود أو ابحث بالاسم أو الرمز..."
-            className="h-11 rounded-full ps-9"
-          />
-          {results.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-popover shadow-lg">
-              {results.map((p) => (
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
+        {/* Product catalogue */}
+        <section className="space-y-3 rounded-2xl border bg-card p-3 sm:p-4">
+          <div className="relative">
+            <ScanBarcode className="pointer-events-none absolute top-1/2 start-3 size-5 -translate-y-1/2 text-primary" />
+            <Input
+              value={q}
+              autoFocus
+              onChange={(e) => setQ(e.target.value)}
+              data-scan-target=""
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" || !q.trim()) return;
+                e.preventDefault();
+                if (byCode.has(q.trim().toLowerCase())) handleScan(q);
+                else if (results[0]) add(results[0]);
+              }}
+              placeholder="امسح الباركود أو ابحث بالاسم أو الرمز..."
+              className="h-12 rounded-xl ps-10 text-base"
+            />
+          </div>
+          <div className="grid max-h-[65vh] grid-cols-2 gap-2 overflow-y-auto pe-1 sm:grid-cols-3 xl:grid-cols-4">
+            {results.map((p) => {
+              const out = (Number(p.stock_qty) || 0) <= 0;
+              return (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => add(p)}
-                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-start text-sm hover:bg-muted"
+                  className="group flex flex-col overflow-hidden rounded-xl border bg-background text-start transition hover:-translate-y-0.5 hover:border-primary hover:shadow-md active:scale-95"
                 >
-                  <span className="truncate">{p.name_ar || p.name_en}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {money(sellPrice(p))} · المخزون {p.stock_qty}
-                  </span>
+                  <div className="aspect-[4/3] w-full bg-muted">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt="" loading="lazy" className="size-full object-cover" />
+                    ) : (
+                      <div className="flex size-full items-center justify-center text-muted-foreground">
+                        <Search className="size-6" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1 p-2">
+                    <p className="line-clamp-2 min-h-[2.5rem] text-xs font-semibold">{p.name_ar || p.name_en}</p>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-sm font-bold text-primary">{money(sellPrice(p))}</span>
+                      <span className={out ? "text-[10px] text-destructive" : "text-[10px] text-muted-foreground"}>
+                        {out ? "نفد" : p.stock_qty}
+                      </span>
+                    </div>
+                  </div>
                 </button>
-              ))}
-            </div>
-          )}
-        </div>
+              );
+            })}
+            {results.length === 0 && (
+              <p className="col-span-full py-10 text-center text-sm text-muted-foreground">لا توجد نتائج</p>
+            )}
+          </div>
+        </section>
 
-        {lines.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            السلة فارغة — ابحث عن مادة وأضفها.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {lines.map((l) => (
-              <div key={l.id} className="flex flex-wrap items-center gap-2 rounded-xl border p-2">
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{l.name}</span>
-                <span className="text-xs text-muted-foreground">{money(l.price)}</span>
-                <div className="flex items-center gap-1">
-                  <Button size="icon" variant="outline" className="size-8" onClick={() => setQty(l.id, l.qty - 1)}>
-                    <Minus className="size-4" />
-                  </Button>
-                  <span className="w-8 text-center text-sm font-bold">{l.qty}</span>
-                  <Button size="icon" variant="outline" className="size-8" onClick={() => setQty(l.id, l.qty + 1)}>
-                    <Plus className="size-4" />
-                  </Button>
+        {/* Ticket */}
+        <aside className="flex flex-col rounded-2xl border bg-card lg:sticky lg:top-20">
+          <div className="flex items-center justify-between border-b p-3">
+            <h3 className="font-bold">الفاتورة الحالية</h3>
+            {lines.length > 0 && (
+              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setLines([])}>
+                <Trash2 className="me-1 size-4" /> تفريغ
+              </Button>
+            )}
+          </div>
+          <div className="max-h-[38vh] min-h-[160px] flex-1 space-y-2 overflow-y-auto p-3">
+            {lines.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                امسح باركود مادة أو اضغط عليها لإضافتها
+              </p>
+            ) : (
+              lines.map((l) => (
+                <div key={l.id} className="rounded-xl border p-2">
+                  <div className="flex items-start gap-2">
+                    <span className="min-w-0 flex-1 text-sm font-semibold">{l.name}</span>
+                    <button
+                      type="button"
+                      className="text-destructive"
+                      onClick={() => setLines((cur) => cur.filter((x) => x.id !== l.id))}
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="flex items-center rounded-lg border">
+                      <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty - 1)}>
+                        <Minus className="size-4" />
+                      </button>
+                      <span className="w-8 text-center text-sm font-bold">{l.qty}</span>
+                      <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty + 1)}>
+                        <Plus className="size-4" />
+                      </button>
+                    </div>
+                    <span className="text-xs text-muted-foreground">× {money(l.price)}</span>
+                    <span className="ms-auto text-sm font-bold">{money(l.price * l.qty)}</span>
+                  </div>
+                  {l.qty > l.stock && (
+                    <p className="mt-1 text-xs text-destructive">المتوفر في المخزون {l.stock} فقط</p>
+                  )}
                 </div>
-                <span className="w-24 text-end text-sm font-bold">{money(l.price * l.qty)}</span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="size-8 text-destructive"
-                  onClick={() => setLines((cur) => cur.filter((x) => x.id !== l.id))}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-                {l.qty > l.stock && (
-                  <span className="w-full text-xs text-destructive">
-                    المتوفر في المخزون {l.stock} فقط
-                  </span>
-                )}
-              </div>
-            ))}
+              ))
+            )}
           </div>
-        )}
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1">
-            <Label>اسم الزبون (اختياري)</Label>
-            <Input value={customer} onChange={(e) => setCustomer(e.target.value)} />
+          <div className="space-y-2 border-t p-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Input placeholder="اسم الزبون" value={customer} onChange={(e) => setCustomer(e.target.value)} />
+              <Input placeholder="الهاتف" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="shrink-0 text-sm">خصم (د.ع)</Label>
+              <NumberField value={discount} onValueChange={(v) => setDiscount(v ?? 0)} />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label>الهاتف (اختياري)</Label>
-            <Input dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <div className="space-y-1 border-t bg-muted/40 p-3 text-sm">
+            <div className="flex justify-between"><span>المجموع ({lines.reduce((s, l) => s + l.qty, 0)} قطعة)</span><b>{money(subtotal)}</b></div>
+            {disc > 0 && (
+              <div className="flex justify-between text-destructive"><span>الخصم</span><span>-{money(disc)}</span></div>
+            )}
+            <div className="flex justify-between pt-1 text-2xl font-black text-primary">
+              <span>الإجمالي</span>
+              <span>{money(total)}</span>
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label>خصم (د.ع)</Label>
-            <NumberField value={discount} onValueChange={(v) => setDiscount(v ?? 0)} />
+          <div className="grid grid-cols-[auto_1fr] gap-2 p-3 pt-0">
+            <Button size="lg" variant="outline" className="h-14" onClick={() => void runDrawer()} title="فتح الجرار">
+              <Vault className="size-5" />
+            </Button>
+            <Button size="lg" className="h-14 text-base font-bold" disabled={busy || !lines.length} onClick={checkout}>
+              <Printer className="me-2 size-5" />
+              {busy ? "جاري التسجيل..." : "دفع وطباعة"}
+            </Button>
           </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
-          <div className="text-sm">
-            <div>المجموع: <b>{money(subtotal)}</b></div>
-            {disc > 0 && <div className="text-destructive">الخصم: -{money(disc)}</div>}
-            <div className="text-lg font-bold text-primary">الإجمالي: {money(total)}</div>
-          </div>
-          <Button size="lg" disabled={busy || !lines.length} onClick={checkout}>
-            {busy ? "جاري التسجيل..." : "إتمام البيع وطباعة الفاتورة"}
-          </Button>
-        </div>
+        </aside>
       </div>
 
       <SavedSales onOpen={(r) => setReceipt(r)} />
