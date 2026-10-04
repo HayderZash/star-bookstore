@@ -22,6 +22,7 @@ export type Product = {
   created_at: string;
   /** Cost price (admin only, never shown to customers). */
   cost_price: number;
+  barcode: string | null;
 };
 
 
@@ -46,7 +47,7 @@ export type Category = {
 };
 
 const PRODUCT_COLS =
-  "id, sku, name_ar, name_en, description_ar, description_en, price, discount_price, cost_price, category_id, image_url, catalog_pdf_url, stock_qty, is_featured, images, deal_ends_at, created_at";
+  "id, sku, name_ar, name_en, description_ar, description_en, price, discount_price, cost_price, barcode, category_id, image_url, catalog_pdf_url, stock_qty, is_featured, images, deal_ends_at, created_at";
 
 const PAGE = 1000;
 

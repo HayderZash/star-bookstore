@@ -21,6 +21,7 @@ type Product = {
   price: number;
   discount_price: number | null;
   cost_price?: number;
+  barcode?: string | null;
 
   stock_qty: number;
   is_featured: boolean;
@@ -32,6 +33,7 @@ type Product = {
 /** Column headers of the import/export sheet — must stay in sync with rowToProduct(). */
 const HEADERS = [
   "sku",
+  "barcode",
   "name_ar",
   "name_en",
   "description_ar",
@@ -48,6 +50,7 @@ const HEADERS = [
 
 const HEADERS_AR: Record<(typeof HEADERS)[number], string> = {
   sku: "الرمز",
+  barcode: "الباركود",
   name_ar: "الاسم بالعربية",
   name_en: "الاسم بالإنكليزية",
   description_ar: "الوصف بالعربية",
@@ -105,6 +108,7 @@ export function ProductsExcel({
   const exportTemplate = () => {
     const example = {
       sku: "SKU-001",
+      barcode: "6281234567890",
       name_ar: "مثال: دفتر 100 ورقة مسطر",
       name_en: "Example: Notebook 100 sheets",
       description_ar: "وصف مختصر",
@@ -133,6 +137,7 @@ export function ProductsExcel({
     const byId = new Map(categories.map((c) => [c.id, c.name_ar]));
     const rows = products.map((p) => ({
       sku: p.sku,
+      barcode: p.barcode ?? "",
       name_ar: p.name_ar,
       name_en: p.name_en,
       description_ar: p.description_ar,
@@ -185,6 +190,7 @@ export function ProductsExcel({
         const discount = String(row["discount_price"] ?? "").trim();
         const values = {
           sku: String(row["sku"] ?? "").trim(),
+          barcode: String(row["barcode"] ?? "").trim() || null,
           name_ar: nameAr,
           name_en: String(row["name_en"] ?? "").trim(),
           description_ar: String(row["description_ar"] ?? "").trim(),
