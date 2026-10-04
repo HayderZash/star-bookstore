@@ -22,6 +22,7 @@ import {
   Heart,
   Tag,
   PackageSearch,
+  ScanBarcode,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -211,6 +212,18 @@ function SideMenu({
             </Link>
           ))}
           {isAdmin && (
+            <>
+              <Link to="/pos" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-primary hover:bg-sand">
+                <ScanBarcode className="size-4 shrink-0" />
+                الكاشير
+              </Link>
+              <Link to="/admin" search={{ tab: "orders" }} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground">
+                <ClipboardList className="size-4 shrink-0" />
+                الطلبات
+              </Link>
+            </>
+          )}
+          {isAdmin && (
             <Link
               to="/admin"
               onClick={() => setOpen(false)}
@@ -317,6 +330,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
             {isAdmin && (
+              <Link to="/pos" className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90">
+                <ScanBarcode className="size-4" />
+                الكاشير
+              </Link>
+            )}
+            {isAdmin && (
+              <Link to="/admin" search={{ tab: "orders" }} className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground">
+                <ClipboardList className="size-4" />
+                الطلبات
+              </Link>
+            )}
+            {isAdmin && (
               <Link
                 to="/admin"
                 className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground"
@@ -388,6 +413,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+          {isAdmin && (
+            <Link
+              to="/pos"
+              className={cn(
+                "flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground",
+                pathname === "/pos" && "text-primary",
+              )}
+            >
+              <ScanBarcode className="size-5" />
+              الكاشير
+            </Link>
+          )}
           {isAdmin && (
             <Link
               to="/admin"
