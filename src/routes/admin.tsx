@@ -437,6 +437,7 @@ function AdminPage() {
       const values = {
         ...rest,
         category_id: pform.category_id || null,
+        barcode: pform.barcode.trim() || null,
         discount_price: pform.discount_price || null,
         images: images_text
           .split(/[\n,]/)
