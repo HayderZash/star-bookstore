@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Minus, Plus, Printer, Search, Trash2, RotateCcw } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { Minus, Plus, Printer, Search, Trash2, RotateCcw, ScanBarcode, Usb, Vault, Unplug } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatIQD } from "@/lib/format";
 import storeLogo from "@/lib/store-logo";
 import { productsQuery, settingsQuery, type Product } from "@/lib/queries";
+import {
+  connectDevice,
+  deviceLabel,
+  disconnectDevice,
+  hasSerial,
+  hasUsb,
+  listenForScans,
+  onHardwareChange,
+  openDrawer,
+  printThermal,
+  restoreDevices,
+  type ReceiptData,
+} from "@/lib/pos-hardware";
 
 type Line = { id: string; name: string; price: number; qty: number; stock: number };
 
@@ -121,6 +134,25 @@ function fullHtml(r: Receipt, settings: Record<string, string>) {
   <footer>شكراً لتسوقكم من ${name}</footer></body></html>`;
 }
 
+function thermalData(r: Receipt, settings: Record<string, string>): ReceiptData {
+  const phone = settings["store_phone"] || settings["support_whatsapp"] || "";
+  return {
+    title: settings["store_name_ar"] || "مكتبة النجم",
+    subtitle: [
+      phone,
+      `وصل #${r.sale_number} — ${new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn")}`,
+      r.customer_name ? `الزبون: ${r.customer_name}` : "",
+    ].filter(Boolean),
+    lines: r.lines.map((l) => ({ name: l.name, qty: l.qty, amount: money(l.price * l.qty) })),
+    totals: [
+      { label: "المجموع", value: money(r.subtotal) },
+      ...(r.discount ? [{ label: "الخصم", value: `- ${money(r.discount)}` }] : []),
+      { label: "الإجمالي", value: money(r.total), bold: true },
+    ],
+    footer: "شكراً لتسوقكم",
+  };
+}
+
 /** Admin cashier: build a sale, deduct stock, print a mini or A4 invoice. */
 export function CashierPanel() {
   const qc = useQueryClient();
@@ -135,6 +167,69 @@ export function CashierPanel() {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [mode, setMode] = useState<"mini" | "full">("mini");
   const frameRef = useRef<HTMLIFrameElement | null>(null);
+  const [autoDrawer, setAutoDrawer] = useState(true);
+  const [, setHwTick] = useState(0);
+
+  useEffect(() => {
+    const off = onHardwareChange(() => setHwTick((n) => n + 1));
+    void restoreDevices();
+    setAutoDrawer(localStorage.getItem("pos-auto-drawer") !== "0");
+    return off;
+  }, []);
+
+  const byCode = useMemo(() => {
+    const m = new Map<string, Product>();
+    for (const p of products.data ?? []) {
+      if (p.sku) m.set(p.sku.trim().toLowerCase(), p);
+      if (p.barcode) m.set(p.barcode.trim().toLowerCase(), p);
+    }
+    return m;
+  }, [products.data]);
+
+  const addRef = useRef<(p: Product) => void>(() => {});
+  const byCodeRef = useRef(byCode);
+  byCodeRef.current = byCode;
+  const handleScan = (code: string) => {
+    const p = byCodeRef.current.get(code.trim().toLowerCase());
+    if (!p) {
+      toast.error(`لا توجد مادة بالباركود ${code}`);
+      return false;
+    }
+    if ((Number(p.stock_qty) || 0) <= 0) toast.warning(`«${p.name_ar}» غير متوفرة في المخزون`);
+    addRef.current(p);
+    toast.success(`أضيفت: ${p.name_ar || p.name_en}`);
+    return true;
+  };
+  useEffect(() => listenForScans((c) => void handleScan(c)), []);
+
+  const runDrawer = async () => {
+    try {
+      if (!(await openDrawer())) toast.error("اربط الطابعة الحرارية أو جهاز الجرار أولاً");
+    } catch (e) {
+      toast.error(`تعذر فتح الجرار: ${(e as Error).message}`);
+    }
+  };
+
+  /** Thermal printer if connected (drawer opens via it), else browser print. */
+  const printReceipt = async (r: Receipt) => {
+    const st0 = settings.data ?? {};
+    try {
+      if (await printThermal(thermalData(r, st0), autoDrawer)) {
+        toast.success("تمت الطباعة على الطابعة الحرارية");
+        return;
+      }
+    } catch (e) {
+      toast.error(`خطأ في الطابعة الحرارية: ${(e as Error).message}`);
+    }
+    const win = frameRef.current?.contentWindow;
+    if (!win) {
+      toast.error("تعذر فتح الطباعة");
+      return;
+    }
+    win.focus();
+    win.print();
+    if (autoDrawer) await openDrawer().catch(() => false);
+  };
 
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -164,6 +259,7 @@ export function CashierPanel() {
     });
     setQ("");
   };
+  addRef.current = add;
 
   const setQty = (id: string, qty: number) =>
     setLines((cur) => cur.map((l) => (l.id === id ? { ...l, qty: Math.max(1, qty) } : l)));
@@ -197,7 +293,7 @@ export function CashierPanel() {
         .select("sale_number, created_at, customer_name, phone, subtotal, discount_amount, total_amount")
         .eq("id", String(saleId))
         .maybeSingle();
-      setReceipt({
+      const r: Receipt = {
         sale_number: Number(sale?.sale_number ?? 0),
         created_at: String(sale?.created_at ?? new Date().toISOString()),
         customer_name: customer,
@@ -206,7 +302,8 @@ export function CashierPanel() {
         subtotal,
         discount: disc,
         total,
-      });
+      };
+      setReceipt(r);
       setLines([]);
       setCustomer("");
       setPhone("");
@@ -214,6 +311,8 @@ export function CashierPanel() {
       void qc.invalidateQueries({ queryKey: ["products"] });
       void qc.invalidateQueries({ queryKey: ["pos-sales"] });
       toast.success("تم تسجيل البيع وتحديث المخزون");
+      // Wait for the receipt frame to render before printing.
+      setTimeout(() => void printReceipt(r), 400);
     } catch (e) {
       toast.error((e as Error).message || "تعذر إتمام البيع");
     } finally {
@@ -225,13 +324,28 @@ export function CashierPanel() {
 
   return (
     <div className="space-y-4">
+      <HardwareBar
+        autoDrawer={autoDrawer}
+        onAutoDrawer={(v) => {
+          setAutoDrawer(v);
+          localStorage.setItem("pos-auto-drawer", v ? "1" : "0");
+        }}
+        onDrawer={() => void runDrawer()}
+      />
       <div className="rounded-2xl border bg-card p-4 space-y-3">
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="ابحث عن مادة بالاسم أو الرمز لإضافتها للسلة..."
+            data-scan-target=""
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" || !q.trim()) return;
+              e.preventDefault();
+              if (byCode.has(q.trim().toLowerCase())) handleScan(q);
+              else if (results[0]) add(results[0]);
+            }}
+            placeholder="امسح الباركود أو ابحث بالاسم أو الرمز..."
             className="h-11 rounded-full ps-9"
           />
           {results.length > 0 && (
@@ -340,18 +454,14 @@ export function CashierPanel() {
             </Button>
             <Button
               size="sm"
-              onClick={() => {
-                const win = frameRef.current?.contentWindow;
-                if (!win) {
-                  toast.error("تعذر فتح الطباعة");
-                  return;
-                }
-                win.focus();
-                win.print();
-              }}
+              onClick={() => void printReceipt(receipt)}
             >
               <Printer className="me-1 size-4" />
               طباعة
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => void runDrawer()}>
+              <Vault className="me-1 size-4" />
+              فتح الجرار
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setReceipt(null)}>
               إغلاق
@@ -474,6 +584,85 @@ function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Connect thermal printer / cash drawer and show scanner status. */
+function HardwareBar({
+  autoDrawer,
+  onAutoDrawer,
+  onDrawer,
+}: {
+  autoDrawer: boolean;
+  onAutoDrawer: (v: boolean) => void;
+  onDrawer: () => void;
+}) {
+  const [supported, setSupported] = useState({ serial: false, usb: false });
+  useEffect(() => setSupported({ serial: hasSerial(), usb: hasUsb() }), []);
+
+  const connect = async (role: "printer" | "drawer", kind: "serial" | "usb") => {
+    try {
+      await connectDevice(role, kind);
+      toast.success(role === "printer" ? "تم ربط الطابعة الحرارية" : "تم ربط جرار النقود");
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (!/No port selected|No device selected/i.test(msg)) toast.error(msg);
+    }
+  };
+
+  const slot = (role: "printer" | "drawer", title: string) => {
+    const label = deviceLabel(role);
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border p-2">
+        <span className="text-sm font-semibold">{title}:</span>
+        {label ? (
+          <>
+            <span className="text-xs text-primary">متصل ({label})</span>
+            <Button size="sm" variant="ghost" onClick={() => void disconnectDevice(role)}>
+              <Unplug className="size-4" />
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button size="sm" variant="outline" disabled={!supported.usb} onClick={() => void connect(role, "usb")}>
+              <Usb className="me-1 size-4" /> USB
+            </Button>
+            <Button size="sm" variant="outline" disabled={!supported.serial} onClick={() => void connect(role, "serial")}>
+              منفذ تسلسلي/COM
+            </Button>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-3 rounded-2xl border bg-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-base font-semibold">الأجهزة</h3>
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <ScanBarcode className="size-4" /> قارئ الباركود جاهز — امسح أي مادة مباشرة
+        </span>
+      </div>
+      <div className="grid gap-2 md:grid-cols-2">
+        {slot("printer", "الطابعة الحرارية")}
+        {slot("drawer", "جرار النقود (اختياري إذا كان موصولاً بالطابعة)")}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button size="sm" onClick={onDrawer}>
+          <Vault className="me-1 size-4" /> فتح الجرار
+        </Button>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={autoDrawer} onChange={(e) => onAutoDrawer(e.target.checked)} />
+          فتح الجرار تلقائياً عند الطباعة
+        </label>
+      </div>
+      {!supported.usb && !supported.serial && (
+        <p className="text-xs text-destructive">
+          ربط الطابعة والجرار يحتاج متصفح Chrome أو Edge على الحاسوب.
+        </p>
       )}
     </div>
   );

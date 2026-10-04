@@ -338,6 +338,7 @@ const emptyProduct = {
   description_en: "",
   price: 0,
   cost_price: 0,
+  barcode: "",
   discount_price: null as number | null,
   category_id: null as string | null,
   image_url: "",
@@ -436,6 +437,7 @@ function AdminPage() {
       const values = {
         ...rest,
         category_id: pform.category_id || null,
+        barcode: pform.barcode.trim() || null,
         discount_price: pform.discount_price || null,
         images: images_text
           .split(/[\n,]/)
@@ -505,6 +507,7 @@ function AdminPage() {
       description_en: p.description_en ?? "",
       price: Number(p.price) || 0,
       cost_price: Number(p.cost_price) || 0,
+      barcode: p.barcode ?? "",
       discount_price: p.discount_price === null ? null : Number(p.discount_price),
 
       category_id: p.category_id ?? null,
@@ -1012,6 +1015,17 @@ function AdminPage() {
             <div className="space-y-2">
               <Label>الرمز SKU</Label>
               <Input value={pform.sku} onChange={(e) => setPform({ ...pform, sku: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>رقم الباركود</Label>
+              <Input
+                dir="ltr"
+                inputMode="numeric"
+                placeholder="امسح بالقارئ أو اكتب الرقم"
+                value={pform.barcode}
+                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                onChange={(e) => setPform({ ...pform, barcode: e.target.value.trim() })}
+              />
             </div>
             <div className="space-y-2">
               <Label>القسم</Label>
