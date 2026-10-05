@@ -314,6 +314,7 @@ export function CashierPanel() {
           id: p.id,
           name: p.name_ar || p.name_en,
           price: sellPrice(p),
+          orig: Number(p.price) || sellPrice(p),
           qty: 1,
           stock: Number(p.stock_qty) || 0,
         },
@@ -587,7 +588,7 @@ type SavedSale = {
   subtotal: number;
   discount_amount: number;
   total_amount: number;
-  pos_sale_items: { product_name: string; quantity: number; unit_price: number }[];
+  pos_sale_items: { product_name: string; quantity: number; unit_price: number; original_price: number | null }[];
 };
 
 /** Saved cashier invoices: review, reprint, or delete (stock goes back). */
@@ -601,7 +602,7 @@ function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
       const { data, error } = await supabase
         .from("pos_sales")
         .select(
-          "id, sale_number, created_at, customer_name, phone, subtotal, discount_amount, total_amount, pos_sale_items(product_name, quantity, unit_price)",
+          "id, sale_number, created_at, customer_name, phone, subtotal, discount_amount, total_amount, pos_sale_items(product_name, quantity, unit_price, original_price)",
         )
         .order("created_at", { ascending: false })
         .limit(100);
@@ -659,6 +660,7 @@ function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
                       id: `${s.id}-${idx}`,
                       name: i.product_name,
                       price: Number(i.unit_price) || 0,
+                      orig: Number(i.original_price) || Number(i.unit_price) || 0,
                       qty: Number(i.quantity) || 0,
                       stock: 0,
                     })),
