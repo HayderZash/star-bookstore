@@ -24,8 +24,10 @@ import {
   restoreDevices,
   type ReceiptData,
 } from "@/lib/pos-hardware";
+import { barcodeSvg, invoiceSerial, qrSvg, receiptQrs } from "@/lib/receipt-codes";
 
-type Line = { id: string; name: string; price: number; qty: number; stock: number };
+/** `orig` = price before the product's own discount (equals `price` when none). */
+type Line = { id: string; name: string; price: number; orig?: number; qty: number; stock: number };
 
 const money = (n: number) => formatIQD(Number(n) || 0, "ar");
 
@@ -45,15 +47,52 @@ type Receipt = {
   total: number;
 };
 
+const origOf = (l: Line) => Math.max(l.orig ?? l.price, l.price);
+
+/** Totals block shared by every invoice style, so discounts are always itemised. */
+function totalsOf(r: Receipt) {
+  const before = r.lines.reduce((s, l) => s + origOf(l) * l.qty, 0);
+  const itemDisc = Math.max(0, before - r.subtotal);
+  const rows: { label: string; value: string; bold?: boolean }[] = [];
+  if (itemDisc > 0) {
+    rows.push({ label: "المجموع قبل الخصم", value: money(before) });
+    rows.push({ label: "خصم المواد", value: `- ${money(itemDisc)}` });
+  } else rows.push({ label: "المجموع", value: money(r.subtotal) });
+  if (r.discount) rows.push({ label: "خصم على الفاتورة", value: `- ${money(r.discount)}` });
+  if (itemDisc > 0 && r.discount) rows.push({ label: "مجموع الخصم", value: `- ${money(itemDisc + r.discount)}` });
+  rows.push({ label: "الإجمالي", value: money(r.total), bold: true });
+  return rows;
+}
+
+const qrRow = (settings: Record<string, string>) =>
+  receiptQrs(settings)
+    .map(
+      (q) =>
+        `<div class="qr"><img src="data:image/svg+xml;utf8,${encodeURIComponent(qrSvg(q.text))}" alt="${q.label}" /><span>${q.label}</span></div>`,
+    )
+    .join("");
+
+const barcodeImg = (r: Receipt) => {
+  const serial = invoiceSerial(r.sale_number);
+  return `<div class="bc"><img src="data:image/svg+xml;utf8,${encodeURIComponent(barcodeSvg(serial))}" alt="${serial}" /><span>${serial}</span></div>`;
+};
+
 /** 80mm thermal receipt. */
 function miniHtml(r: Receipt, settings: Record<string, string>) {
   const name = settings["store_name_ar"] || "مكتبة النجم";
   const phone = settings["store_phone"] || settings["support_whatsapp"] || "";
   const rows = r.lines
-    .map(
-      (l) =>
-        `<tr><td class="n">${l.name}</td><td>${l.qty}</td><td>${money(l.price * l.qty)}</td></tr>`,
-    )
+    .map((l) => {
+      const o = origOf(l);
+      const note =
+        o > l.price
+          ? `<div class="d">السعر <s>${money(o)}</s> ← ${money(l.price)} (خصم ${money((o - l.price) * l.qty)})</div>`
+          : "";
+      return `<tr><td class="n">${l.name}${note}</td><td>${l.qty}</td><td>${money(l.price * l.qty)}</td></tr>`;
+    })
+    .join("");
+  const totals = totalsOf(r)
+    .map((t) => `<div${t.bold ? ' class="grand"' : ""}><span>${t.label}</span><span>${t.value}</span></div>`)
     .join("");
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
   <title>وصل #${r.sale_number}</title><style>
@@ -62,13 +101,21 @@ function miniHtml(r: Receipt, settings: Record<string, string>) {
   h1 { font-size:15px; margin:2px 0; text-align:center; }
   .c { text-align:center; font-size:11px; }
   table { width:100%; border-collapse:collapse; margin-top:6px; }
-  th, td { padding:2px 0; text-align:center; font-size:11px; }
+  th, td { padding:5px 0; text-align:center; font-size:11px; vertical-align:top; }
+  tbody tr + tr td { border-top:1px dotted #999; }
   td.n, th.n { text-align:right; }
+  .d { font-size:10px; margin-top:2px; }
   thead th { border-bottom:1px dashed #000; }
   .tot { border-top:1px dashed #000; margin-top:6px; padding-top:4px; font-size:12px; }
-  .tot div { display:flex; justify-content:space-between; }
+  .tot div { display:flex; justify-content:space-between; padding:1px 0; }
   .grand { font-weight:700; font-size:14px; }
-  footer { margin-top:8px; text-align:center; font-size:10px; }
+  .bc { text-align:center; margin-top:8px; }
+  .bc img { width:60mm; height:12mm; display:block; margin:0 auto; }
+  .bc span { font-size:10px; letter-spacing:1px; }
+  .qrs { display:flex; justify-content:space-around; margin-top:8px; }
+  .qr { text-align:center; font-size:9px; }
+  .qr img { width:20mm; height:20mm; display:block; }
+  footer { margin-top:6px; text-align:center; font-size:10px; }
   </style></head><body>
   <h1>${name}</h1>
   <div class="c">${phone}</div>
@@ -76,11 +123,9 @@ function miniHtml(r: Receipt, settings: Record<string, string>) {
   ${r.customer_name ? `<div class="c">الزبون: ${r.customer_name}</div>` : ""}
   <table><thead><tr><th class="n">المادة</th><th>عدد</th><th>المبلغ</th></tr></thead>
   <tbody>${rows}</tbody></table>
-  <div class="tot">
-    <div><span>المجموع</span><span>${money(r.subtotal)}</span></div>
-    ${r.discount ? `<div><span>الخصم</span><span>- ${money(r.discount)}</span></div>` : ""}
-    <div class="grand"><span>الإجمالي</span><span>${money(r.total)}</span></div>
-  </div>
+  <div class="tot">${totals}</div>
+  ${barcodeImg(r)}
+  <div class="qrs">${qrRow(settings)}</div>
   <footer>شكراً لتسوقكم 🌟</footer></body></html>`;
 }
 
@@ -91,10 +136,15 @@ function fullHtml(r: Receipt, settings: Record<string, string>) {
   const phone = settings["store_phone"] || settings["support_whatsapp"] || "";
   const address = settings["store_address"] || "";
   const rows = r.lines
-    .map(
-      (l, i) =>
-        `<tr><td>${i + 1}</td><td class="name">${l.name}</td><td>${l.qty}</td><td>${money(l.price)}</td><td>${money(l.price * l.qty)}</td></tr>`,
-    )
+    .map((l, i) => {
+      const o = origOf(l);
+      const unit = o > l.price ? `<s class="old">${money(o)}</s><br>${money(l.price)}` : money(l.price);
+      const disc = o > l.price ? `- ${money((o - l.price) * l.qty)}` : "—";
+      return `<tr><td>${i + 1}</td><td class="name">${l.name}</td><td>${l.qty}</td><td>${unit}</td><td>${disc}</td><td>${money(l.price * l.qty)}</td></tr>`;
+    })
+    .join("");
+  const totals = totalsOf(r)
+    .map((t) => `<tr${t.bold ? ' class="grand"' : ""}><td>${t.label}</td><td>${t.value}</td></tr>`)
     .join("");
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
   <title>فاتورة #${r.sale_number}</title><style>
@@ -107,13 +157,21 @@ function fullHtml(r: Receipt, settings: Record<string, string>) {
   .brand h1 { margin:0; font-size:22px; color:#4b2e83; }
   .brand p { margin:2px 0 0; font-size:12px; color:#5b5570; }
   .meta { text-align:left; font-size:12px; line-height:1.8; }
+  .bc { text-align:center; }
+  .bc img { width:190px; height:42px; display:block; }
+  .bc span { font-size:11px; letter-spacing:2px; }
   table { width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }
-  th, td { border:1px solid #ded7ef; padding:7px 8px; text-align:center; }
+  th, td { border:1px solid #ded7ef; padding:10px 8px; text-align:center; }
   th { background:#4b2e83; color:#fff; }
   td.name { text-align:right; }
-  .totals { margin-top:12px; margin-inline-start:auto; width:280px; }
-  .totals td { border:none; text-align:start; }
+  s.old { color:#8a8499; font-size:11px; }
+  .bottom { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-top:12px; }
+  .totals { width:300px; margin:0; }
+  .totals td { border:none; text-align:start; padding:5px 8px; }
   .totals tr.grand td { border-top:2px solid #4b2e83; font-size:16px; font-weight:700; color:#4b2e83; }
+  .qrs { display:flex; gap:18px; }
+  .qr { text-align:center; font-size:11px; color:#5b5570; }
+  .qr img { width:26mm; height:26mm; display:block; margin-bottom:3px; }
   footer { margin-top:26px; text-align:center; font-size:11px; color:#6b6580;
     border-top:1px solid #ded7ef; padding-top:10px; }
   </style></head><body>
@@ -122,15 +180,13 @@ function fullHtml(r: Receipt, settings: Record<string, string>) {
     <div class="meta"><div><b>فاتورة رقم:</b> #${r.sale_number}</div>
     <div><b>التاريخ:</b> ${new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn")}</div>
     ${r.customer_name ? `<div><b>الزبون:</b> ${r.customer_name}</div>` : ""}
-    ${r.phone ? `<div><b>الهاتف:</b> ${r.phone}</div>` : ""}</div></div>
+    ${r.phone ? `<div><b>الهاتف:</b> ${r.phone}</div>` : ""}
+    ${barcodeImg(r)}</div></div>
   <table><thead><tr><th style="width:36px">#</th><th>المادة</th><th style="width:60px">العدد</th>
-    <th style="width:110px">سعر القطعة</th><th style="width:120px">السعر الكلي</th></tr></thead>
+    <th style="width:110px">سعر القطعة</th><th style="width:100px">الخصم</th><th style="width:120px">السعر الكلي</th></tr></thead>
   <tbody>${rows}</tbody></table>
-  <table class="totals">
-    <tr><td>المجموع الفرعي</td><td>${money(r.subtotal)}</td></tr>
-    ${r.discount ? `<tr><td>الخصم</td><td>- ${money(r.discount)}</td></tr>` : ""}
-    <tr class="grand"><td>الإجمالي</td><td>${money(r.total)}</td></tr>
-  </table>
+  <div class="bottom"><div class="qrs">${qrRow(settings)}</div>
+  <table class="totals">${totals}</table></div>
   <footer>شكراً لتسوقكم من ${name}</footer></body></html>`;
 }
 
@@ -143,12 +199,18 @@ function thermalData(r: Receipt, settings: Record<string, string>): ReceiptData 
       `وصل #${r.sale_number} — ${new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn")}`,
       r.customer_name ? `الزبون: ${r.customer_name}` : "",
     ].filter(Boolean),
-    lines: r.lines.map((l) => ({ name: l.name, qty: l.qty, amount: money(l.price * l.qty) })),
-    totals: [
-      { label: "المجموع", value: money(r.subtotal) },
-      ...(r.discount ? [{ label: "الخصم", value: `- ${money(r.discount)}` }] : []),
-      { label: "الإجمالي", value: money(r.total), bold: true },
-    ],
+    lines: r.lines.map((l) => {
+      const o = origOf(l);
+      return {
+        name: l.name,
+        qty: l.qty,
+        amount: money(l.price * l.qty),
+        note: o > l.price ? `قبل الخصم ${money(o)} — خصم ${money((o - l.price) * l.qty)}` : undefined,
+      };
+    }),
+    totals: totalsOf(r),
+    barcode: invoiceSerial(r.sale_number),
+    qrs: receiptQrs(settings),
     footer: "شكراً لتسوقكم",
   };
 }
