@@ -152,7 +152,7 @@ export async function openDrawer(): Promise<boolean> {
   return true;
 }
 
-export type ReceiptLine = { name: string; qty: number; amount: string; note?: string };
+export type ReceiptLine = { name: string; qty: number; amount: string; note?: string | undefined };
 export type ReceiptData = {
   title: string;
   subtitle: string[];
