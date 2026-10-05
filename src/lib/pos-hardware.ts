@@ -9,6 +9,8 @@
  *   RJ11 drawer port.
  */
 
+import { barcodeBits, qrMatrix } from "./receipt-codes";
+
 type Writer = { write: (data: Uint8Array) => Promise<void>; label: string; close: () => Promise<void> };
 type Role = "printer" | "drawer";
 
@@ -150,13 +152,17 @@ export async function openDrawer(): Promise<boolean> {
   return true;
 }
 
-export type ReceiptLine = { name: string; qty: number; amount: string };
+export type ReceiptLine = { name: string; qty: number; amount: string; note?: string };
 export type ReceiptData = {
   title: string;
   subtitle: string[];
   lines: ReceiptLine[];
   totals: { label: string; value: string; bold?: boolean }[];
   footer: string;
+  /** Invoice serial rendered as a CODE128 barcode. */
+  barcode?: string;
+  /** QR codes printed side by side to keep the paper short. */
+  qrs?: { label: string; text: string }[];
 };
 
 const WIDTH = 576; // 80mm @ 203dpi (72mm printable)
@@ -180,7 +186,7 @@ export function receiptToEscPos(r: ReceiptData): Uint8Array {
   };
   const rule = () => {
     ctx.fillRect(pad, y + 4, WIDTH - pad * 2, 2);
-    y += 12;
+    y += 14;
   };
   text(r.title, 34, "center", true);
   y += 44;
@@ -191,10 +197,15 @@ export function receiptToEscPos(r: ReceiptData): Uint8Array {
   rule();
   for (const l of r.lines) {
     text(l.name, 24, "right", true);
-    y += 30;
+    y += 32;
     text(`${l.qty} ×`, 22, "right");
     text(l.amount, 22, "left");
     y += 30;
+    if (l.note) {
+      text(l.note, 20, "right");
+      y += 28;
+    }
+    y += 10; // gap between items
   }
   rule();
   for (const t of r.totals) {
@@ -202,6 +213,36 @@ export function receiptToEscPos(r: ReceiptData): Uint8Array {
     text(t.label, size, "right", t.bold);
     text(t.value, size, "left", t.bold);
     y += size + 10;
+  }
+  if (r.barcode) {
+    y += 10;
+    const bits = barcodeBits(r.barcode);
+    const m = Math.max(1, Math.min(3, Math.floor((WIDTH - 40) / bits.length)));
+    const x0 = Math.round((WIDTH - bits.length * m) / 2);
+    for (let i = 0; i < bits.length; i++) if (bits[i] === "1") ctx.fillRect(x0 + i * m, y, m, 70);
+    y += 74;
+    text(r.barcode, 20, "center");
+    y += 30;
+  }
+  if (r.qrs?.length) {
+    y += 8;
+    const cell = (WIDTH - pad * 2) / r.qrs.length;
+    let tallest = 0;
+    r.qrs.forEach((q, i) => {
+      const { size, on } = qrMatrix(q.text);
+      const m = Math.max(2, Math.floor(Math.min(150, cell - 20) / size));
+      const px = size * m;
+      // RTL: first QR on the right.
+      const cx = WIDTH - pad - cell * i - cell / 2;
+      const x0 = Math.round(cx - px / 2);
+      for (let rr = 0; rr < size; rr++)
+        for (let cc = 0; cc < size; cc++) if (on(rr, cc)) ctx.fillRect(x0 + cc * m, y + rr * m, m, m);
+      ctx.font = "18px Tahoma, Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(q.label, cx, y + px + 22);
+      tallest = Math.max(tallest, px + 30);
+    });
+    y += tallest + 6;
   }
   y += 10;
   text(r.footer, 22, "center");
