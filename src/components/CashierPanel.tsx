@@ -24,6 +24,7 @@ import {
   restoreDevices,
   type ReceiptData,
 } from "@/lib/pos-hardware";
+import { receiptQuote } from "@/lib/receipt-quotes";
 import { barcodeSvg, invoiceSerial, qrSvg, receiptQrs } from "@/lib/receipt-codes";
 
 /** `orig` = price before the product's own discount (equals `price` when none). */
@@ -163,7 +164,7 @@ function fullHtml(r: Receipt, settings: Record<string, string>) {
   .bc { text-align:center; }
   .bc img { width:190px; height:42px; display:block; }
   .bc span { font-size:11px; letter-spacing:2px; }
-  table { width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }
+  table { width:100%; border-collapse:collapse; margin-top:14px; font-size:15px; font-weight:600; }
   th, td { border:1px solid #ded7ef; padding:10px 8px; text-align:center; }
   th { background:#4b2e83; color:#fff; }
   td.name { text-align:right; }
@@ -190,10 +191,10 @@ function fullHtml(r: Receipt, settings: Record<string, string>) {
   <tbody>${rows}</tbody></table>
   <div class="bottom"><div class="qrs">${qrRow(settings)}</div>
   <table class="totals">${totals}</table></div>
-  <footer>شكراً لتسوقكم من ${name}</footer></body></html>`;
+  <footer>${receiptQuote(r.sale_number)}<br/>شكراً لتسوقكم من ${name}</footer></body></html>`;
 }
 
-function thermalData(r: Receipt, settings: Record<string, string>): ReceiptData {
+function thermalData(r: Receipt, settings: Record<string, string>, logo?: HTMLImageElement): ReceiptData {
   const phone = settings["store_phone"] || settings["support_whatsapp"] || "";
   return {
     title: settings["store_name_ar"] || "مكتبة النجم",
@@ -214,9 +215,19 @@ function thermalData(r: Receipt, settings: Record<string, string>): ReceiptData 
     totals: totalsOf(r),
     barcode: invoiceSerial(r.sale_number),
     qrs: receiptQrs(settings),
-    footer: "شكراً لتسوقكم",
+    footer: receiptQuote(r.sale_number),
+    logo,
   };
 }
+
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement | undefined>((res) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => res(img);
+    img.onerror = () => res(undefined);
+    img.src = src;
+  });
 
 /** Admin cashier: build a sale, deduct stock, print a mini or A4 invoice. */
 export function CashierPanel() {
@@ -279,7 +290,7 @@ export function CashierPanel() {
   const printReceipt = async (r: Receipt) => {
     const st0 = settings.data ?? {};
     try {
-      if (await printThermal(thermalData(r, st0), autoDrawer)) {
+      if (await printThermal(thermalData(r, st0, await loadImage(st0["logo_url"] || storeLogo.url)), autoDrawer)) {
         toast.success("تمت الطباعة على الطابعة الحرارية");
         return;
       }
