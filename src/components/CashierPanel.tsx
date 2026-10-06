@@ -24,6 +24,7 @@ import {
   restoreDevices,
   type ReceiptData,
 } from "@/lib/pos-hardware";
+import { receiptQuote } from "@/lib/receipt-quotes";
 import { barcodeSvg, invoiceSerial, qrSvg, receiptQrs } from "@/lib/receipt-codes";
 
 /** `orig` = price before the product's own discount (equals `price` when none). */
@@ -94,29 +95,32 @@ function miniHtml(r: Receipt, settings: Record<string, string>) {
   const totals = totalsOf(r)
     .map((t) => `<div${t.bold ? ' class="grand"' : ""}><span>${t.label}</span><span>${t.value}</span></div>`)
     .join("");
+  const logo = settings["logo_url"] || storeLogo.url;
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
   <title>وصل #${r.sale_number}</title><style>
   @page { size: 80mm auto; margin: 3mm; }
-  body { font-family: Tahoma, Arial, sans-serif; width: 74mm; margin:0; color:#000; font-size:12px; }
-  h1 { font-size:15px; margin:2px 0; text-align:center; }
-  .c { text-align:center; font-size:11px; }
+  body { font-family: Tahoma, Arial, sans-serif; width: 74mm; margin:0; color:#000; font-size:14px; font-weight:700; }
+  .logo { display:block; margin:0 auto 2px; width:22mm; height:22mm; object-fit:contain; }
+  h1 { font-size:18px; margin:2px 0; text-align:center; }
+  .c { text-align:center; font-size:13px; }
   table { width:100%; border-collapse:collapse; margin-top:6px; }
-  th, td { padding:5px 0; text-align:center; font-size:11px; vertical-align:top; }
+  th, td { padding:6px 0; text-align:center; font-size:13px; vertical-align:top; }
   tbody tr + tr td { border-top:1px dotted #999; }
   td.n, th.n { text-align:right; }
-  .d { font-size:10px; margin-top:2px; }
+  .d { font-size:12px; margin-top:2px; }
   thead th { border-bottom:1px dashed #000; }
-  .tot { border-top:1px dashed #000; margin-top:6px; padding-top:4px; font-size:12px; }
+  .tot { border-top:1px dashed #000; margin-top:6px; padding-top:4px; font-size:14px; }
   .tot div { display:flex; justify-content:space-between; padding:1px 0; }
-  .grand { font-weight:700; font-size:14px; }
+  .grand { font-weight:900; font-size:17px; }
   .bc { text-align:center; margin-top:8px; }
   .bc img { width:60mm; height:12mm; display:block; margin:0 auto; }
-  .bc span { font-size:10px; letter-spacing:1px; }
+  .bc span { font-size:12px; letter-spacing:1px; }
   .qrs { display:flex; justify-content:space-around; margin-top:8px; }
-  .qr { text-align:center; font-size:9px; }
+  .qr { text-align:center; font-size:11px; }
   .qr img { width:20mm; height:20mm; display:block; }
-  footer { margin-top:6px; text-align:center; font-size:10px; }
+  footer { margin-top:8px; text-align:center; font-size:13px; }
   </style></head><body>
+  <img class="logo" src="${logo}" alt="${name}" />
   <h1>${name}</h1>
   <div class="c">${phone}</div>
   <div class="c">وصل #${r.sale_number} — ${new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn")}</div>
@@ -126,7 +130,7 @@ function miniHtml(r: Receipt, settings: Record<string, string>) {
   <div class="tot">${totals}</div>
   ${barcodeImg(r)}
   <div class="qrs">${qrRow(settings)}</div>
-  <footer>شكراً لتسوقكم 🌟</footer></body></html>`;
+  <footer>${receiptQuote(r.sale_number)}</footer></body></html>`;
 }
 
 /** A4 invoice. */
@@ -160,7 +164,7 @@ function fullHtml(r: Receipt, settings: Record<string, string>) {
   .bc { text-align:center; }
   .bc img { width:190px; height:42px; display:block; }
   .bc span { font-size:11px; letter-spacing:2px; }
-  table { width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }
+  table { width:100%; border-collapse:collapse; margin-top:14px; font-size:15px; font-weight:600; }
   th, td { border:1px solid #ded7ef; padding:10px 8px; text-align:center; }
   th { background:#4b2e83; color:#fff; }
   td.name { text-align:right; }
@@ -187,10 +191,10 @@ function fullHtml(r: Receipt, settings: Record<string, string>) {
   <tbody>${rows}</tbody></table>
   <div class="bottom"><div class="qrs">${qrRow(settings)}</div>
   <table class="totals">${totals}</table></div>
-  <footer>شكراً لتسوقكم من ${name}</footer></body></html>`;
+  <footer>${receiptQuote(r.sale_number)}<br/>شكراً لتسوقكم من ${name}</footer></body></html>`;
 }
 
-function thermalData(r: Receipt, settings: Record<string, string>): ReceiptData {
+function thermalData(r: Receipt, settings: Record<string, string>, logo?: HTMLImageElement): ReceiptData {
   const phone = settings["store_phone"] || settings["support_whatsapp"] || "";
   return {
     title: settings["store_name_ar"] || "مكتبة النجم",
@@ -211,9 +215,19 @@ function thermalData(r: Receipt, settings: Record<string, string>): ReceiptData 
     totals: totalsOf(r),
     barcode: invoiceSerial(r.sale_number),
     qrs: receiptQrs(settings),
-    footer: "شكراً لتسوقكم",
+    footer: receiptQuote(r.sale_number),
+    logo,
   };
 }
+
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement | undefined>((res) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => res(img);
+    img.onerror = () => res(undefined);
+    img.src = src;
+  });
 
 /** Admin cashier: build a sale, deduct stock, print a mini or A4 invoice. */
 export function CashierPanel() {
@@ -276,7 +290,7 @@ export function CashierPanel() {
   const printReceipt = async (r: Receipt) => {
     const st0 = settings.data ?? {};
     try {
-      if (await printThermal(thermalData(r, st0), autoDrawer)) {
+      if (await printThermal(thermalData(r, st0, await loadImage(st0["logo_url"] || storeLogo.url)), autoDrawer)) {
         toast.success("تمت الطباعة على الطابعة الحرارية");
         return;
       }

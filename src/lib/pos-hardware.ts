@@ -163,6 +163,8 @@ export type ReceiptData = {
   barcode?: string;
   /** QR codes printed side by side to keep the paper short. */
   qrs?: { label: string; text: string }[];
+  /** Store logo printed at the top. */
+  logo?: HTMLImageElement | undefined;
 };
 
 const WIDTH = 576; // 80mm @ 203dpi (72mm printable)
@@ -188,30 +190,40 @@ export function receiptToEscPos(r: ReceiptData): Uint8Array {
     ctx.fillRect(pad, y + 4, WIDTH - pad * 2, 2);
     y += 14;
   };
-  text(r.title, 34, "center", true);
-  y += 44;
+  if (r.logo) {
+    const h = 150;
+    const w = Math.round((r.logo.width / r.logo.height) * h) || h;
+    try {
+      ctx.drawImage(r.logo, (WIDTH - w) / 2, y, w, h);
+      y += h + 6;
+    } catch {
+      /* tainted/broken image — skip */
+    }
+  }
+  text(r.title, 38, "center", true);
+  y += 48;
   for (const s of r.subtitle) {
-    text(s, 22, "center");
-    y += 30;
+    text(s, 25, "center", true);
+    y += 33;
   }
   rule();
   for (const l of r.lines) {
-    text(l.name, 24, "right", true);
-    y += 32;
-    text(`${l.qty} ×`, 22, "right");
-    text(l.amount, 22, "left");
-    y += 30;
+    text(l.name, 28, "right", true);
+    y += 36;
+    text(`${l.qty} ×`, 26, "right", true);
+    text(l.amount, 26, "left", true);
+    y += 34;
     if (l.note) {
-      text(l.note, 20, "right");
-      y += 28;
+      text(l.note, 23, "right", true);
+      y += 31;
     }
     y += 10; // gap between items
   }
   rule();
   for (const t of r.totals) {
-    const size = t.bold ? 30 : 24;
-    text(t.label, size, "right", t.bold);
-    text(t.value, size, "left", t.bold);
+    const size = t.bold ? 34 : 27;
+    text(t.label, size, "right", true);
+    text(t.value, size, "left", true);
     y += size + 10;
   }
   if (r.barcode) {
@@ -245,8 +257,8 @@ export function receiptToEscPos(r: ReceiptData): Uint8Array {
     y += tallest + 6;
   }
   y += 10;
-  text(r.footer, 22, "center");
-  y += 40;
+  text(r.footer, 24, "center", true);
+  y += 44;
 
   const height = y;
   const img = ctx.getImageData(0, 0, WIDTH, height).data;

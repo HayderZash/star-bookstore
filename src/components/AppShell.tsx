@@ -213,11 +213,25 @@ function SideMenu({
           ))}
           {isAdmin && (
             <>
-              <Link to="/pos" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-primary hover:bg-sand">
+              <Link
+                to="/pos"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground",
+                  pathname === "/pos" && "bg-primary-soft text-accent-foreground",
+                )}
+              >
                 <ScanBarcode className="size-4 shrink-0" />
                 الكاشير
               </Link>
-              <Link to="/manage-orders" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground">
+              <Link
+                to="/manage-orders"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground",
+                  pathname === "/manage-orders" && "bg-primary-soft text-accent-foreground",
+                )}
+              >
                 <ClipboardList className="size-4 shrink-0" />
                 الطلبات
               </Link>
@@ -330,13 +344,25 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
             {isAdmin && (
-              <Link to="/pos" className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90">
+              <Link
+                to="/pos"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground",
+                  pathname === "/pos" && "bg-primary-soft text-accent-foreground",
+                )}
+              >
                 <ScanBarcode className="size-4" />
                 الكاشير
               </Link>
             )}
             {isAdmin && (
-              <Link to="/manage-orders" className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground">
+              <Link
+                to="/manage-orders"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground",
+                  pathname === "/manage-orders" && "bg-primary-soft text-accent-foreground",
+                )}
+              >
                 <ClipboardList className="size-4" />
                 الطلبات
               </Link>
