@@ -178,6 +178,11 @@ export function ProductsExcel({
       const inserts: Record<string, unknown>[] = [];
       const updates: { id: string; values: Record<string, unknown> }[] = [];
       let skipped = 0;
+      let dupBarcodes = 0;
+      const seenBarcodes = new Set(
+        products.filter((p) => p.barcode).map((p) => [String(p.barcode).trim(), p.sku.trim().toLowerCase()] as const),
+      );
+      const barcodeOwner = new Map(seenBarcodes);
 
       for (const row of raw) {
         const nameAr = String(row["name_ar"] ?? "").trim();
@@ -205,6 +210,14 @@ export function ProductsExcel({
           catalog_pdf_url: String(row["catalog_pdf_url"] ?? "").trim() || null,
         };
         const existing = values.sku ? bySku.get(values.sku.toLowerCase()) : undefined;
+        // Barcodes must be unique: keep the first product that uses it, clear it on the rest.
+        if (values.barcode) {
+          const owner = barcodeOwner.get(values.barcode);
+          if (owner !== undefined && owner !== values.sku.toLowerCase()) {
+            values.barcode = null;
+            dupBarcodes++;
+          } else barcodeOwner.set(values.barcode, values.sku.toLowerCase());
+        }
         if (existing) updates.push({ id: existing, values });
         else inserts.push(values);
       }
@@ -237,11 +250,12 @@ export function ProductsExcel({
       }
 
       toast.success(
-        `تم الاستيراد: ${inserts.length} جديد، ${updates.length} محدّث${skipped ? `، ${skipped} متجاهل` : ""}`,
+        `تم الاستيراد: ${inserts.length} جديد، ${updates.length} محدّث${skipped ? `، ${skipped} متجاهل` : ""}${dupBarcodes ? `، ${dupBarcodes} باركود مكرر تُرك فارغاً` : ""}`,
       );
       onDone();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "فشل استيراد الملف");
+      const msg = (e as { message?: string } | null)?.message;
+      toast.error(msg ? `فشل استيراد الملف: ${msg}` : "فشل استيراد الملف");
     } finally {
       setBusy(false);
       setProgress(null);
