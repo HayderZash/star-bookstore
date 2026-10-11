@@ -20,9 +20,13 @@ type Row = {
 };
 
 const money = (n: number) => formatIQD(Number(n) || 0, "ar");
-const sourceLabel = (s: string) => (s === "pos" ? "كاشير" : "طلب أونلاين");
+const sourceLabel = (s: string) =>
+  s
+    .split("+")
+    .map((p) => (p === "cashier" || p === "pos" ? "كاشير" : "طلب أونلاين"))
+    .join(" + ");
 
-function reportHtml(rows: Row[], from: string, to: string) {
+function reportHtml(rows: Row[], from: string, to: string, disc: number) {
   const body = rows
     .map(
       (r, i) => `<tr><td>${i + 1}</td><td class="name">${r.product_name}</td>
@@ -59,7 +63,9 @@ function reportHtml(rows: Row[], from: string, to: string) {
   <th>السعر الأساس</th><th>سعر البيع</th><th>كلفة كلية</th><th>بيع كلي</th><th>الربح</th></tr></thead>
   <tbody>${body}</tbody>
   <tfoot><tr><td colspan="3">المجموع</td><td>${t.qty}</td><td>—</td><td>—</td>
-  <td>${money(t.cost)}</td><td>${money(t.sell)}</td><td>${money(t.profit)}</td></tr></tfoot>
+  <td>${money(t.cost)}</td><td>${money(t.sell)}</td><td>${money(t.profit)}</td></tr>
+  <tr><td colspan="8">خصومات (خصم الفواتير والطلبات)</td><td>-${money(disc)}</td></tr>
+  <tr><td colspan="8">صافي الربح بعد الخصومات</td><td>${money(t.profit - disc)}</td></tr></tfoot>
   </table></body></html>`;
 }
 
@@ -82,6 +88,24 @@ export function ProfitsPanel() {
     },
   });
 
+  const discounts = useQuery({
+    queryKey: ["profit-discounts", from, to],
+    queryFn: async () => {
+      const f = from ? new Date(from).toISOString() : null;
+      const t = to ? new Date(`${to}T23:59:59`).toISOString() : null;
+      let o = supabase.from("orders").select("discount_amount").eq("status", "completed");
+      let p = supabase.from("pos_sales").select("discount_amount");
+      if (f) { o = o.gte("created_at", f); p = p.gte("created_at", f); }
+      if (t) { o = o.lte("created_at", t); p = p.lte("created_at", t); }
+      const [a, b] = await Promise.all([o, p]);
+      if (a.error) throw a.error;
+      if (b.error) throw b.error;
+      const sum = (r: { discount_amount: number }[] | null) =>
+        (r ?? []).reduce((s, x) => s + (Number(x.discount_amount) || 0), 0);
+      return sum(a.data) + sum(b.data);
+    },
+  });
+  const disc = discounts.data ?? 0;
   const rows = report.data ?? [];
   const totals = rows.reduce(
     (a, r) => ({
@@ -104,7 +128,7 @@ export function ProfitsPanel() {
           <Label>إلى تاريخ</Label>
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
-        <Button variant="outline" onClick={() => report.refetch()}>
+        <Button variant="outline" onClick={() => { report.refetch(); discounts.refetch(); }}>
           تحديث
         </Button>
         <Button onClick={() => setPrinting(true)} disabled={!rows.length}>
@@ -113,12 +137,13 @@ export function ProfitsPanel() {
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-5">
         {[
           ["عدد القطع المباعة", String(totals.qty)],
           ["كلفة المواد", money(totals.cost)],
           ["مجموع البيع", money(totals.sell)],
-          ["الربح الكلي", money(totals.profit)],
+          ["خصومات", `-${money(disc)}`],
+          ["صافي الربح", money(totals.profit - disc)],
         ].map(([label, value]) => (
           <div key={label} className="rounded-2xl border bg-card p-4">
             <p className="text-xs text-muted-foreground">{label}</p>
@@ -196,7 +221,7 @@ export function ProfitsPanel() {
             ref={frameRef}
             title="profit-report"
             className="h-[60vh] w-full rounded-lg border bg-white"
-            srcDoc={reportHtml(rows, from, to)}
+            srcDoc={reportHtml(rows, from, to, disc)}
           />
         </div>
       )}
