@@ -350,28 +350,74 @@ export function CashierPanel() {
       .slice(0, 60);
   }, [q, products.data]);
 
-  const add = (p: Product) => {
+  /** Build an invoice line for a product (and one of its types, if it has any). */
+  const lineFor = (p: Product, v?: ProductVariant): Line => {
+    const delta = Number(v?.price_delta) || 0;
+    const base = p.name_ar || p.name_en;
+    const pStock = Number(p.stock_qty) || 0;
+    return {
+      id: `${p.id}:${v?.id ?? ""}`,
+      pid: p.id,
+      vid: v?.id ?? null,
+      name: v ? `${base} - ${v.value_ar}` : base,
+      price: sellPrice(p) + delta,
+      orig: (Number(p.price) || sellPrice(p)) + delta,
+      qty: 1,
+      stock: v ? Math.min(Number(v.stock_qty) || 0, pStock) : pStock,
+    };
+  };
+
+  const pushLine = (next: Line) =>
     setLines((cur) => {
-      const found = cur.find((l) => l.id === p.id);
+      const found = cur.find((l) => l.id === next.id);
       if (found)
-        return cur.map((l) =>
-          l.id === p.id ? { ...l, qty: Math.min(l.stock || 999, l.qty + 1) } : l,
-        );
-      return [
-        ...cur,
-        {
-          id: p.id,
-          name: p.name_ar || p.name_en,
-          price: sellPrice(p),
-          orig: Number(p.price) || sellPrice(p),
-          qty: 1,
-          stock: Number(p.stock_qty) || 0,
-        },
-      ];
+        return cur.map((l) => (l.id === next.id ? { ...l, qty: Math.min(l.stock || 999, l.qty + next.qty) } : l));
+      return [...cur, next];
     });
+
+  const add = (p: Product) => {
+    const types = typesOf.get(p.id) ?? [];
+    const v = types.find((t) => (Number(t.stock_qty) || 0) > 0) ?? types[0];
+    pushLine(lineFor(p, v));
     setQ("");
   };
   addRef.current = add;
+
+  /** Switch an invoice line to another type of the same product. */
+  const changeType = (lineId: string, vid: string) => {
+    const l = lines.find((x) => x.id === lineId);
+    const p = l?.pid ? productById.get(l.pid) : undefined;
+    const v = (p && typesOf.get(p.id)?.find((t) => t.id === vid)) || undefined;
+    if (!l || !p || !v) return;
+    const next = { ...lineFor(p, v), qty: l.qty };
+    setLines((cur) => {
+      const rest = cur.filter((x) => x.id !== lineId);
+      const dup = rest.find((x) => x.id === next.id);
+      if (dup) return rest.map((x) => (x.id === next.id ? { ...x, qty: x.qty + next.qty } : x));
+      const idx = cur.findIndex((x) => x.id === lineId);
+      rest.splice(idx, 0, next);
+      return rest;
+    });
+  };
+
+  const addCustom = () => {
+    const name = customName.trim();
+    const price = Number(customPrice) || 0;
+    const qty = Math.max(1, Number(customQty) || 1);
+    if (!name) {
+      toast.error("اكتب اسم العنصر");
+      return;
+    }
+    if (price <= 0) {
+      toast.error("اكتب سعر العنصر");
+      return;
+    }
+    pushLine({ id: `custom:${crypto.randomUUID()}`, pid: null, custom: true, name, price, orig: price, qty, stock: 99999 });
+    setCustomName("");
+    setCustomPrice(null);
+    setCustomQty(1);
+    setCustomOpen(false);
+  };
 
   const setQty = (id: string, qty: number) =>
     setLines((cur) => cur.map((l) => (l.id === id ? { ...l, qty: Math.max(1, qty) } : l)));
@@ -380,12 +426,13 @@ export function CashierPanel() {
   const disc = Math.min(Math.max(0, discount), subtotal);
   const total = subtotal - disc;
 
-  const checkout = async () => {
+  /** Save the sale (stock is deducted); optionally print the receipt right after. */
+  const checkout = async (print: boolean) => {
     if (!lines.length) {
       toast.error("السلة فارغة");
       return;
     }
-    const over = lines.find((l) => l.qty > l.stock);
+    const over = lines.find((l) => !l.custom && l.qty > l.stock);
     if (over) {
       toast.error(`الكمية غير كافية للمادة «${over.name}» (المتوفر ${over.stock})`);
       return;
@@ -393,7 +440,11 @@ export function CashierPanel() {
     setBusy(true);
     try {
       const { data: saleId, error } = await supabase.rpc("pos_checkout", {
-        _items: lines.map((l) => ({ product_id: l.id, quantity: l.qty })),
+        _items: lines.map((l) =>
+          l.custom
+            ? { product_id: null, name: l.name, price: l.price, quantity: l.qty }
+            : { product_id: l.pid, variant_id: l.vid ?? null, quantity: l.qty },
+        ),
         _customer_name: customer,
         _phone: phone,
         _discount: disc,
@@ -415,16 +466,22 @@ export function CashierPanel() {
         discount: disc,
         total,
       };
-      setReceipt(r);
       setLines([]);
       setCustomer("");
       setPhone("");
       setDiscount(0);
       void qc.invalidateQueries({ queryKey: ["products"] });
+      void qc.invalidateQueries({ queryKey: ["product_variants"] });
       void qc.invalidateQueries({ queryKey: ["pos-sales"] });
-      toast.success("تم تسجيل البيع وتحديث المخزون");
-      // Wait for the receipt frame to render before printing.
-      setTimeout(() => void printReceipt(r), 400);
+      if (print) {
+        setReceipt(r);
+        toast.success("تم حفظ البيع وجاري الطباعة");
+        // Wait for the receipt frame to render before printing.
+        setTimeout(() => void printReceipt(r), 400);
+      } else {
+        toast.success(`تم حفظ الفاتورة #${r.sale_number} — تجدها في الفواتير المحفوظة`);
+        if (autoDrawer) await openDrawer().catch(() => false);
+      }
     } catch (e) {
       toast.error((e as Error).message || "تعذر إتمام البيع");
     } finally {
