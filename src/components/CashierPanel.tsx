@@ -98,10 +98,7 @@ function miniHtml(r: Receipt, settings: Record<string, string>) {
   const rows = r.lines
     .map((l) => {
       const o = origOf(l);
-      const note =
-        o > l.price
-          ? `<div class="d">السعر <s>${money(o)}</s> ← ${money(l.price)} (خصم ${money((o - l.price) * l.qty)})</div>`
-          : "";
+      const note = o > l.price ? ` <span class="d">(خصم ${money((o - l.price) * l.qty)})</span>` : "";
       return `<tr><td class="n">${l.name}${note}</td><td>${l.qty}</td><td>${money(l.price * l.qty)}</td></tr>`;
     })
     .join("");
@@ -109,35 +106,35 @@ function miniHtml(r: Receipt, settings: Record<string, string>) {
     .map((t) => `<div${t.bold ? ' class="grand"' : ""}><span>${t.label}</span><span>${t.value}</span></div>`)
     .join("");
   const logo = settings["logo_url"] || storeLogo.url;
+  const date = new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn", { dateStyle: "short", timeStyle: "short" });
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
   <title>وصل #${r.sale_number}</title><style>
-  @page { size: 80mm auto; margin: 3mm; }
-  body { font-family: Tahoma, Arial, sans-serif; width: 74mm; margin:0; color:#000; font-size:14px; font-weight:700; }
-  .logo { display:block; margin:0 auto 2px; width:22mm; height:22mm; object-fit:contain; }
-  h1 { font-size:18px; margin:2px 0; text-align:center; }
-  .c { text-align:center; font-size:13px; }
-  table { width:100%; border-collapse:collapse; margin-top:6px; }
-  th, td { padding:6px 0; text-align:center; font-size:13px; vertical-align:top; }
-  tbody tr + tr td { border-top:1px dotted #999; }
+  @page { size: 80mm auto; margin: 2mm 3mm; }
+  body { font-family: Tahoma, Arial, sans-serif; width: 74mm; margin:0; color:#000; font-size:13px; font-weight:400; line-height:1.3; }
+  .logo { display:block; margin:0 auto; width:15mm; height:15mm; object-fit:contain; }
+  h1 { font-size:16px; margin:1px 0; text-align:center; font-weight:700; }
+  .c { text-align:center; font-size:12px; }
+  table { width:100%; border-collapse:collapse; margin-top:4px; }
+  th, td { padding:3px 0; text-align:center; font-size:12px; vertical-align:top; }
+  th { font-weight:700; }
   td.n, th.n { text-align:right; }
-  .d { font-size:12px; margin-top:2px; }
+  .d { font-size:11px; }
   thead th { border-bottom:1px dashed #000; }
-  .tot { border-top:1px dashed #000; margin-top:6px; padding-top:4px; font-size:14px; }
-  .tot div { display:flex; justify-content:space-between; padding:1px 0; }
-  .grand { font-weight:900; font-size:17px; }
-  .bc { text-align:center; margin-top:8px; }
-  .bc img { width:60mm; height:12mm; display:block; margin:0 auto; }
-  .bc span { font-size:12px; letter-spacing:1px; }
-  .qrs { display:flex; justify-content:space-around; margin-top:8px; }
-  .qr { text-align:center; font-size:11px; }
-  .qr img { width:20mm; height:20mm; display:block; }
-  footer { margin-top:8px; text-align:center; font-size:13px; }
+  .tot { border-top:1px dashed #000; margin-top:4px; padding-top:3px; font-size:13px; }
+  .tot div { display:flex; justify-content:space-between; }
+  .grand { font-weight:700; font-size:15px; }
+  .bc { text-align:center; margin-top:5px; }
+  .bc img { width:55mm; height:10mm; display:block; margin:0 auto; }
+  .bc span { font-size:11px; letter-spacing:1px; }
+  .qrs { display:flex; justify-content:space-around; margin-top:5px; }
+  .qr { text-align:center; font-size:10px; }
+  .qr img { width:17mm; height:17mm; display:block; }
+  footer { margin-top:5px; text-align:center; font-size:12px; }
   </style></head><body>
   <img class="logo" src="${logo}" alt="${name}" />
   <h1>${name}</h1>
-  <div class="c">${phone}</div>
-  <div class="c">وصل #${r.sale_number} — ${new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn")}</div>
-  ${r.customer_name ? `<div class="c">الزبون: ${r.customer_name}</div>` : ""}
+  <div class="c">${[phone, `#${r.sale_number}`, date].filter(Boolean).join(" · ")}</div>
+  ${r.customer_name ? `<div class="c">الزبون: ${r.customer_name}${r.phone ? ` · ${r.phone}` : ""}</div>` : ""}
   <table><thead><tr><th class="n">المادة</th><th>عدد</th><th>المبلغ</th></tr></thead>
   <tbody>${rows}</tbody></table>
   <div class="tot">${totals}</div>
