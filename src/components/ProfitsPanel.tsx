@@ -20,7 +20,11 @@ type Row = {
 };
 
 const money = (n: number) => formatIQD(Number(n) || 0, "ar");
-const sourceLabel = (s: string) => (s === "pos" ? "كاشير" : "طلب أونلاين");
+const sourceLabel = (s: string) =>
+  s
+    .split("+")
+    .map((p) => (p === "cashier" || p === "pos" ? "كاشير" : "طلب أونلاين"))
+    .join(" + ");
 
 function reportHtml(rows: Row[], from: string, to: string) {
   const body = rows
