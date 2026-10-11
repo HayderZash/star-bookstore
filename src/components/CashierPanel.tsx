@@ -248,6 +248,7 @@ const loadImage = (src: string) =>
 export function CashierPanel() {
   const qc = useQueryClient();
   const products = useQuery(productsQuery);
+  const variants = useQuery(productVariantsQuery);
   const settings = useQuery(settingsQuery);
   const [q, setQ] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
@@ -260,6 +261,10 @@ export function CashierPanel() {
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const [autoDrawer, setAutoDrawer] = useState(true);
   const [, setHwTick] = useState(0);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customPrice, setCustomPrice] = useState<number | null>(null);
+  const [customQty, setCustomQty] = useState<number | null>(1);
 
   useEffect(() => {
     const off = onHardwareChange(() => setHwTick((n) => n + 1));
@@ -277,9 +282,23 @@ export function CashierPanel() {
     return m;
   }, [products.data]);
 
+  /** Active types per product (products that share a barcode were merged into types). */
+  const typesOf = useMemo(() => {
+    const m = new Map<string, ProductVariant[]>();
+    for (const v of variants.data ?? []) {
+      if (!v.is_active) continue;
+      const arr = m.get(v.product_id) ?? [];
+      arr.push(v);
+      m.set(v.product_id, arr);
+    }
+    return m;
+  }, [variants.data]);
+  const productById = useMemo(() => new Map((products.data ?? []).map((p) => [p.id, p])), [products.data]);
+
   const addRef = useRef<(p: Product) => void>(() => {});
   const byCodeRef = useRef(byCode);
   byCodeRef.current = byCode;
+  /** A scan always adds the item straight to the invoice. */
   const handleScan = (code: string) => {
     const p = byCodeRef.current.get(code.trim().toLowerCase());
     if (!p) {
@@ -288,10 +307,11 @@ export function CashierPanel() {
     }
     if ((Number(p.stock_qty) || 0) <= 0) toast.warning(`«${p.name_ar}» غير متوفرة في المخزون`);
     addRef.current(p);
+    setQ("");
     toast.success(`أضيفت: ${p.name_ar || p.name_en}`);
     return true;
   };
-  useEffect(() => listenForScans((c) => void handleScan(c)), []);
+  useEffect(() => listenForScans((c) => void handleScan(c), 60), []);
 
   const runDrawer = async () => {
     try {
