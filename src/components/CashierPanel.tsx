@@ -560,50 +560,115 @@ export function CashierPanel() {
 
         {/* Ticket */}
         <aside className="flex flex-col rounded-2xl border bg-card lg:sticky lg:top-20">
-          <div className="flex items-center justify-between border-b p-3">
+          <div className="flex items-center justify-between gap-2 border-b p-3">
             <h3 className="font-bold">الفاتورة الحالية</h3>
-            {lines.length > 0 && (
-              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setLines([])}>
-                <Trash2 className="me-1 size-4" /> تفريغ
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="outline" onClick={() => setCustomOpen((v) => !v)}>
+                <PackagePlus className="me-1 size-4" /> عنصر غير موجود
               </Button>
-            )}
+              {lines.length > 0 && (
+                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setLines([])}>
+                  <Trash2 className="me-1 size-4" /> تفريغ
+                </Button>
+              )}
+            </div>
           </div>
+          {customOpen && (
+            <form
+              className="space-y-2 border-b bg-muted/40 p-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                addCustom();
+              }}
+            >
+              <Input
+                autoFocus
+                placeholder="اسم العنصر"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+              />
+              <div className="grid grid-cols-[1fr_90px] gap-2">
+                <NumberField
+                  value={customPrice}
+                  allowEmpty
+                  placeholder="السعر (د.ع)"
+                  aria-label="السعر"
+                  onValueChange={setCustomPrice}
+                />
+                <NumberField
+                  value={customQty}
+                  allowEmpty
+                  placeholder="العدد"
+                  aria-label="العدد"
+                  onValueChange={setCustomQty}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" className="flex-1">
+                  <Plus className="me-1 size-4" /> إضافة للقائمة
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setCustomOpen(false)}>
+                  إلغاء
+                </Button>
+              </div>
+            </form>
+          )}
           <div className="max-h-[38vh] min-h-[160px] flex-1 space-y-2 overflow-y-auto p-3">
             {lines.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
                 امسح باركود مادة أو اضغط عليها لإضافتها
               </p>
             ) : (
-              lines.map((l) => (
-                <div key={l.id} className="rounded-xl border p-2">
-                  <div className="flex items-start gap-2">
-                    <span className="min-w-0 flex-1 text-sm font-semibold">{l.name}</span>
-                    <button
-                      type="button"
-                      className="text-destructive"
-                      onClick={() => setLines((cur) => cur.filter((x) => x.id !== l.id))}
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </div>
-                  <div className="mt-1 flex items-center gap-2">
-                    <div className="flex items-center rounded-lg border">
-                      <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty - 1)}>
-                        <Minus className="size-4" />
-                      </button>
-                      <span className="w-8 text-center text-sm font-bold">{l.qty}</span>
-                      <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty + 1)}>
-                        <Plus className="size-4" />
+              lines.map((l) => {
+                const types = l.pid ? (typesOf.get(l.pid) ?? []) : [];
+                return (
+                  <div key={l.id} className="rounded-xl border p-2">
+                    <div className="flex items-start gap-2">
+                      <span className="min-w-0 flex-1 text-sm font-semibold">
+                        {l.name}
+                        {l.custom && <span className="ms-1 text-[10px] text-muted-foreground">(يدوي)</span>}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-destructive"
+                        onClick={() => setLines((cur) => cur.filter((x) => x.id !== l.id))}
+                      >
+                        <Trash2 className="size-4" />
                       </button>
                     </div>
-                    <span className="text-xs text-muted-foreground">× {money(l.price)}</span>
-                    <span className="ms-auto text-sm font-bold">{money(l.price * l.qty)}</span>
+                    {types.length > 1 && (
+                      <select
+                        aria-label="النوع"
+                        value={l.vid ?? ""}
+                        onChange={(e) => changeType(l.id, e.target.value)}
+                        className="mt-1 h-8 w-full rounded-lg border border-input bg-background px-2 text-xs"
+                      >
+                        {types.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.value_ar} {(Number(t.stock_qty) || 0) <= 0 ? "(نفد)" : `(${t.stock_qty})`}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="flex items-center rounded-lg border">
+                        <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty - 1)}>
+                          <Minus className="size-4" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-bold">{l.qty}</span>
+                        <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty + 1)}>
+                          <Plus className="size-4" />
+                        </button>
+                      </div>
+                      <span className="text-xs text-muted-foreground">× {money(l.price)}</span>
+                      <span className="ms-auto text-sm font-bold">{money(l.price * l.qty)}</span>
+                    </div>
+                    {!l.custom && l.qty > l.stock && (
+                      <p className="mt-1 text-xs text-destructive">المتوفر في المخزون {l.stock} فقط</p>
+                    )}
                   </div>
-                  {l.qty > l.stock && (
-                    <p className="mt-1 text-xs text-destructive">المتوفر في المخزون {l.stock} فقط</p>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
           <div className="space-y-2 border-t p-3">
@@ -626,13 +691,28 @@ export function CashierPanel() {
               <span>{money(total)}</span>
             </div>
           </div>
-          <div className="grid grid-cols-[auto_1fr] gap-2 p-3 pt-0">
+          <div className="grid grid-cols-[auto_1fr_1fr] gap-2 p-3 pt-0">
             <Button size="lg" variant="outline" className="h-14" onClick={() => void runDrawer()} title="فتح الجرار">
               <Vault className="size-5" />
             </Button>
-            <Button size="lg" className="h-14 text-base font-bold" disabled={busy || !lines.length} onClick={checkout}>
+            <Button
+              size="lg"
+              variant="secondary"
+              className="h-14 text-base font-bold"
+              disabled={busy || !lines.length}
+              onClick={() => void checkout(false)}
+            >
+              <Save className="me-2 size-5" />
+              {busy ? "جاري الحفظ..." : "حفظ"}
+            </Button>
+            <Button
+              size="lg"
+              className="h-14 text-base font-bold"
+              disabled={busy || !lines.length}
+              onClick={() => void checkout(true)}
+            >
               <Printer className="me-2 size-5" />
-              {busy ? "جاري التسجيل..." : "دفع وطباعة"}
+              {busy ? "جاري الحفظ..." : "حفظ وطباعة"}
             </Button>
           </div>
         </aside>
