@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Minus, Plus, Printer, Search, Trash2, RotateCcw, ScanBarcode, Usb, Vault, Unplug } from "lucide-react";
+import { Minus, Plus, Printer, Save, Search, Trash2, RotateCcw, ScanBarcode, Usb, Vault, Unplug, PackagePlus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -10,7 +10,7 @@ import { NumberField } from "@/components/NumberField";
 import { supabase } from "@/integrations/supabase/client";
 import { formatIQD } from "@/lib/format";
 import storeLogo from "@/lib/store-logo";
-import { productsQuery, settingsQuery, type Product } from "@/lib/queries";
+import { productsQuery, productVariantsQuery, settingsQuery, type Product, type ProductVariant } from "@/lib/queries";
 import {
   connectDevice,
   deviceLabel,
@@ -27,8 +27,21 @@ import {
 import { receiptQuote } from "@/lib/receipt-quotes";
 import { barcodeSvg, invoiceSerial, qrSvg, receiptQrs } from "@/lib/receipt-codes";
 
-/** `orig` = price before the product's own discount (equals `price` when none). */
-type Line = { id: string; name: string; price: number; orig?: number; qty: number; stock: number };
+/**
+ * `orig` = price before the product's own discount (equals `price` when none).
+ * `pid` null + `custom` = an item typed in by hand (not in the catalogue, no stock).
+ */
+type Line = {
+  id: string;
+  pid?: string | null;
+  vid?: string | null;
+  custom?: boolean;
+  name: string;
+  price: number;
+  orig?: number;
+  qty: number;
+  stock: number;
+};
 
 const money = (n: number) => formatIQD(Number(n) || 0, "ar");
 
