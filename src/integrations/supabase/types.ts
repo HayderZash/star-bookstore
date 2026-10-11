@@ -370,6 +370,7 @@ export type Database = {
           quantity: number
           sale_id: string
           unit_price: number
+          variant_id: string | null
         }
         Insert: {
           cost_price?: number
@@ -381,6 +382,7 @@ export type Database = {
           quantity?: number
           sale_id: string
           unit_price?: number
+          variant_id?: string | null
         }
         Update: {
           cost_price?: number
@@ -392,6 +394,7 @@ export type Database = {
           quantity?: number
           sale_id?: string
           unit_price?: number
+          variant_id?: string | null
         }
         Relationships: [
           {
