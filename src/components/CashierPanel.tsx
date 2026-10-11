@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Minus, Plus, Printer, Search, Trash2, RotateCcw, ScanBarcode, Usb, Vault, Unplug } from "lucide-react";
+import { Minus, Plus, Printer, Save, Search, Trash2, RotateCcw, ScanBarcode, Usb, Vault, Unplug, PackagePlus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -10,7 +10,7 @@ import { NumberField } from "@/components/NumberField";
 import { supabase } from "@/integrations/supabase/client";
 import { formatIQD } from "@/lib/format";
 import storeLogo from "@/lib/store-logo";
-import { productsQuery, settingsQuery, type Product } from "@/lib/queries";
+import { productsQuery, productVariantsQuery, settingsQuery, type Product, type ProductVariant } from "@/lib/queries";
 import {
   connectDevice,
   deviceLabel,
@@ -27,8 +27,21 @@ import {
 import { receiptQuote } from "@/lib/receipt-quotes";
 import { barcodeSvg, invoiceSerial, qrSvg, receiptQrs } from "@/lib/receipt-codes";
 
-/** `orig` = price before the product's own discount (equals `price` when none). */
-type Line = { id: string; name: string; price: number; orig?: number; qty: number; stock: number };
+/**
+ * `orig` = price before the product's own discount (equals `price` when none).
+ * `pid` null + `custom` = an item typed in by hand (not in the catalogue, no stock).
+ */
+type Line = {
+  id: string;
+  pid?: string | null;
+  vid?: string | null;
+  custom?: boolean;
+  name: string;
+  price: number;
+  orig?: number;
+  qty: number;
+  stock: number;
+};
 
 const money = (n: number) => formatIQD(Number(n) || 0, "ar");
 
@@ -85,10 +98,7 @@ function miniHtml(r: Receipt, settings: Record<string, string>) {
   const rows = r.lines
     .map((l) => {
       const o = origOf(l);
-      const note =
-        o > l.price
-          ? `<div class="d">السعر <s>${money(o)}</s> ← ${money(l.price)} (خصم ${money((o - l.price) * l.qty)})</div>`
-          : "";
+      const note = o > l.price ? ` <span class="d">(خصم ${money((o - l.price) * l.qty)})</span>` : "";
       return `<tr><td class="n">${l.name}${note}</td><td>${l.qty}</td><td>${money(l.price * l.qty)}</td></tr>`;
     })
     .join("");
@@ -96,35 +106,35 @@ function miniHtml(r: Receipt, settings: Record<string, string>) {
     .map((t) => `<div${t.bold ? ' class="grand"' : ""}><span>${t.label}</span><span>${t.value}</span></div>`)
     .join("");
   const logo = settings["logo_url"] || storeLogo.url;
+  const date = new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn", { dateStyle: "short", timeStyle: "short" });
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
   <title>وصل #${r.sale_number}</title><style>
-  @page { size: 80mm auto; margin: 3mm; }
-  body { font-family: Tahoma, Arial, sans-serif; width: 74mm; margin:0; color:#000; font-size:14px; font-weight:700; }
-  .logo { display:block; margin:0 auto 2px; width:22mm; height:22mm; object-fit:contain; }
-  h1 { font-size:18px; margin:2px 0; text-align:center; }
-  .c { text-align:center; font-size:13px; }
-  table { width:100%; border-collapse:collapse; margin-top:6px; }
-  th, td { padding:6px 0; text-align:center; font-size:13px; vertical-align:top; }
-  tbody tr + tr td { border-top:1px dotted #999; }
+  @page { size: 80mm auto; margin: 2mm 3mm; }
+  body { font-family: Tahoma, Arial, sans-serif; width: 74mm; margin:0; color:#000; font-size:13px; font-weight:400; line-height:1.3; }
+  .logo { display:block; margin:0 auto; width:15mm; height:15mm; object-fit:contain; }
+  h1 { font-size:16px; margin:1px 0; text-align:center; font-weight:700; }
+  .c { text-align:center; font-size:12px; }
+  table { width:100%; border-collapse:collapse; margin-top:4px; }
+  th, td { padding:3px 0; text-align:center; font-size:12px; vertical-align:top; }
+  th { font-weight:700; }
   td.n, th.n { text-align:right; }
-  .d { font-size:12px; margin-top:2px; }
+  .d { font-size:11px; }
   thead th { border-bottom:1px dashed #000; }
-  .tot { border-top:1px dashed #000; margin-top:6px; padding-top:4px; font-size:14px; }
-  .tot div { display:flex; justify-content:space-between; padding:1px 0; }
-  .grand { font-weight:900; font-size:17px; }
-  .bc { text-align:center; margin-top:8px; }
-  .bc img { width:60mm; height:12mm; display:block; margin:0 auto; }
-  .bc span { font-size:12px; letter-spacing:1px; }
-  .qrs { display:flex; justify-content:space-around; margin-top:8px; }
-  .qr { text-align:center; font-size:11px; }
-  .qr img { width:20mm; height:20mm; display:block; }
-  footer { margin-top:8px; text-align:center; font-size:13px; }
+  .tot { border-top:1px dashed #000; margin-top:4px; padding-top:3px; font-size:13px; }
+  .tot div { display:flex; justify-content:space-between; }
+  .grand { font-weight:700; font-size:15px; }
+  .bc { text-align:center; margin-top:5px; }
+  .bc img { width:55mm; height:10mm; display:block; margin:0 auto; }
+  .bc span { font-size:11px; letter-spacing:1px; }
+  .qrs { display:flex; justify-content:space-around; margin-top:5px; }
+  .qr { text-align:center; font-size:10px; }
+  .qr img { width:17mm; height:17mm; display:block; }
+  footer { margin-top:5px; text-align:center; font-size:12px; }
   </style></head><body>
   <img class="logo" src="${logo}" alt="${name}" />
   <h1>${name}</h1>
-  <div class="c">${phone}</div>
-  <div class="c">وصل #${r.sale_number} — ${new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn")}</div>
-  ${r.customer_name ? `<div class="c">الزبون: ${r.customer_name}</div>` : ""}
+  <div class="c">${[phone, `#${r.sale_number}`, date].filter(Boolean).join(" · ")}</div>
+  ${r.customer_name ? `<div class="c">الزبون: ${r.customer_name}${r.phone ? ` · ${r.phone}` : ""}</div>` : ""}
   <table><thead><tr><th class="n">المادة</th><th>عدد</th><th>المبلغ</th></tr></thead>
   <tbody>${rows}</tbody></table>
   <div class="tot">${totals}</div>
@@ -199,8 +209,13 @@ function thermalData(r: Receipt, settings: Record<string, string>, logo?: HTMLIm
   return {
     title: settings["store_name_ar"] || "مكتبة النجم",
     subtitle: [
-      phone,
-      `وصل #${r.sale_number} — ${new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn")}`,
+      [
+        phone,
+        `#${r.sale_number}`,
+        new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn", { dateStyle: "short", timeStyle: "short" }),
+      ]
+        .filter(Boolean)
+        .join(" · "),
       r.customer_name ? `الزبون: ${r.customer_name}` : "",
     ].filter(Boolean),
     lines: r.lines.map((l) => {
@@ -209,7 +224,7 @@ function thermalData(r: Receipt, settings: Record<string, string>, logo?: HTMLIm
         name: l.name,
         qty: l.qty,
         amount: money(l.price * l.qty),
-        note: o > l.price ? `قبل الخصم ${money(o)} — خصم ${money((o - l.price) * l.qty)}` : undefined,
+        note: o > l.price ? `خصم ${money((o - l.price) * l.qty)}` : undefined,
       };
     }),
     totals: totalsOf(r),
@@ -233,6 +248,7 @@ const loadImage = (src: string) =>
 export function CashierPanel() {
   const qc = useQueryClient();
   const products = useQuery(productsQuery);
+  const variants = useQuery(productVariantsQuery);
   const settings = useQuery(settingsQuery);
   const [q, setQ] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
@@ -245,6 +261,10 @@ export function CashierPanel() {
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const [autoDrawer, setAutoDrawer] = useState(true);
   const [, setHwTick] = useState(0);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customPrice, setCustomPrice] = useState<number | null>(null);
+  const [customQty, setCustomQty] = useState<number | null>(1);
 
   useEffect(() => {
     const off = onHardwareChange(() => setHwTick((n) => n + 1));
@@ -262,9 +282,23 @@ export function CashierPanel() {
     return m;
   }, [products.data]);
 
+  /** Active types per product (products that share a barcode were merged into types). */
+  const typesOf = useMemo(() => {
+    const m = new Map<string, ProductVariant[]>();
+    for (const v of variants.data ?? []) {
+      if (!v.is_active) continue;
+      const arr = m.get(v.product_id) ?? [];
+      arr.push(v);
+      m.set(v.product_id, arr);
+    }
+    return m;
+  }, [variants.data]);
+  const productById = useMemo(() => new Map((products.data ?? []).map((p) => [p.id, p])), [products.data]);
+
   const addRef = useRef<(p: Product) => void>(() => {});
   const byCodeRef = useRef(byCode);
   byCodeRef.current = byCode;
+  /** A scan always adds the item straight to the invoice. */
   const handleScan = (code: string) => {
     const p = byCodeRef.current.get(code.trim().toLowerCase());
     if (!p) {
@@ -273,10 +307,11 @@ export function CashierPanel() {
     }
     if ((Number(p.stock_qty) || 0) <= 0) toast.warning(`«${p.name_ar}» غير متوفرة في المخزون`);
     addRef.current(p);
+    setQ("");
     toast.success(`أضيفت: ${p.name_ar || p.name_en}`);
     return true;
   };
-  useEffect(() => listenForScans((c) => void handleScan(c)), []);
+  useEffect(() => listenForScans((c) => void handleScan(c), 60), []);
 
   const runDrawer = async () => {
     try {
@@ -315,28 +350,74 @@ export function CashierPanel() {
       .slice(0, 60);
   }, [q, products.data]);
 
-  const add = (p: Product) => {
+  /** Build an invoice line for a product (and one of its types, if it has any). */
+  const lineFor = (p: Product, v?: ProductVariant): Line => {
+    const delta = Number(v?.price_delta) || 0;
+    const base = p.name_ar || p.name_en;
+    const pStock = Number(p.stock_qty) || 0;
+    return {
+      id: `${p.id}:${v?.id ?? ""}`,
+      pid: p.id,
+      vid: v?.id ?? null,
+      name: v ? `${base} - ${v.value_ar}` : base,
+      price: sellPrice(p) + delta,
+      orig: (Number(p.price) || sellPrice(p)) + delta,
+      qty: 1,
+      stock: v ? Math.min(Number(v.stock_qty) || 0, pStock) : pStock,
+    };
+  };
+
+  const pushLine = (next: Line) =>
     setLines((cur) => {
-      const found = cur.find((l) => l.id === p.id);
+      const found = cur.find((l) => l.id === next.id);
       if (found)
-        return cur.map((l) =>
-          l.id === p.id ? { ...l, qty: Math.min(l.stock || 999, l.qty + 1) } : l,
-        );
-      return [
-        ...cur,
-        {
-          id: p.id,
-          name: p.name_ar || p.name_en,
-          price: sellPrice(p),
-          orig: Number(p.price) || sellPrice(p),
-          qty: 1,
-          stock: Number(p.stock_qty) || 0,
-        },
-      ];
+        return cur.map((l) => (l.id === next.id ? { ...l, qty: Math.min(l.stock || 999, l.qty + next.qty) } : l));
+      return [...cur, next];
     });
+
+  const add = (p: Product) => {
+    const types = typesOf.get(p.id) ?? [];
+    const v = types.find((t) => (Number(t.stock_qty) || 0) > 0) ?? types[0];
+    pushLine(lineFor(p, v));
     setQ("");
   };
   addRef.current = add;
+
+  /** Switch an invoice line to another type of the same product. */
+  const changeType = (lineId: string, vid: string) => {
+    const l = lines.find((x) => x.id === lineId);
+    const p = l?.pid ? productById.get(l.pid) : undefined;
+    const v = (p && typesOf.get(p.id)?.find((t) => t.id === vid)) || undefined;
+    if (!l || !p || !v) return;
+    const next = { ...lineFor(p, v), qty: l.qty };
+    setLines((cur) => {
+      const rest = cur.filter((x) => x.id !== lineId);
+      const dup = rest.find((x) => x.id === next.id);
+      if (dup) return rest.map((x) => (x.id === next.id ? { ...x, qty: x.qty + next.qty } : x));
+      const idx = cur.findIndex((x) => x.id === lineId);
+      rest.splice(idx, 0, next);
+      return rest;
+    });
+  };
+
+  const addCustom = () => {
+    const name = customName.trim();
+    const price = Number(customPrice) || 0;
+    const qty = Math.max(1, Number(customQty) || 1);
+    if (!name) {
+      toast.error("اكتب اسم العنصر");
+      return;
+    }
+    if (price <= 0) {
+      toast.error("اكتب سعر العنصر");
+      return;
+    }
+    pushLine({ id: `custom:${crypto.randomUUID()}`, pid: null, custom: true, name, price, orig: price, qty, stock: 99999 });
+    setCustomName("");
+    setCustomPrice(null);
+    setCustomQty(1);
+    setCustomOpen(false);
+  };
 
   const setQty = (id: string, qty: number) =>
     setLines((cur) => cur.map((l) => (l.id === id ? { ...l, qty: Math.max(1, qty) } : l)));
@@ -345,12 +426,13 @@ export function CashierPanel() {
   const disc = Math.min(Math.max(0, discount), subtotal);
   const total = subtotal - disc;
 
-  const checkout = async () => {
+  /** Save the sale (stock is deducted); optionally print the receipt right after. */
+  const checkout = async (print: boolean) => {
     if (!lines.length) {
       toast.error("السلة فارغة");
       return;
     }
-    const over = lines.find((l) => l.qty > l.stock);
+    const over = lines.find((l) => !l.custom && l.qty > l.stock);
     if (over) {
       toast.error(`الكمية غير كافية للمادة «${over.name}» (المتوفر ${over.stock})`);
       return;
@@ -358,7 +440,11 @@ export function CashierPanel() {
     setBusy(true);
     try {
       const { data: saleId, error } = await supabase.rpc("pos_checkout", {
-        _items: lines.map((l) => ({ product_id: l.id, quantity: l.qty })),
+        _items: lines.map((l) =>
+          l.custom
+            ? { product_id: null, name: l.name, price: l.price, quantity: l.qty }
+            : { product_id: l.pid, variant_id: l.vid ?? null, quantity: l.qty },
+        ),
         _customer_name: customer,
         _phone: phone,
         _discount: disc,
@@ -380,16 +466,22 @@ export function CashierPanel() {
         discount: disc,
         total,
       };
-      setReceipt(r);
       setLines([]);
       setCustomer("");
       setPhone("");
       setDiscount(0);
       void qc.invalidateQueries({ queryKey: ["products"] });
+      void qc.invalidateQueries({ queryKey: ["product_variants"] });
       void qc.invalidateQueries({ queryKey: ["pos-sales"] });
-      toast.success("تم تسجيل البيع وتحديث المخزون");
-      // Wait for the receipt frame to render before printing.
-      setTimeout(() => void printReceipt(r), 400);
+      if (print) {
+        setReceipt(r);
+        toast.success("تم حفظ البيع وجاري الطباعة");
+        // Wait for the receipt frame to render before printing.
+        setTimeout(() => void printReceipt(r), 400);
+      } else {
+        toast.success(`تم حفظ الفاتورة #${r.sale_number} — تجدها في الفواتير المحفوظة`);
+        if (autoDrawer) await openDrawer().catch(() => false);
+      }
     } catch (e) {
       toast.error((e as Error).message || "تعذر إتمام البيع");
     } finally {
@@ -468,50 +560,115 @@ export function CashierPanel() {
 
         {/* Ticket */}
         <aside className="flex flex-col rounded-2xl border bg-card lg:sticky lg:top-20">
-          <div className="flex items-center justify-between border-b p-3">
+          <div className="flex items-center justify-between gap-2 border-b p-3">
             <h3 className="font-bold">الفاتورة الحالية</h3>
-            {lines.length > 0 && (
-              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setLines([])}>
-                <Trash2 className="me-1 size-4" /> تفريغ
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="outline" onClick={() => setCustomOpen((v) => !v)}>
+                <PackagePlus className="me-1 size-4" /> عنصر غير موجود
               </Button>
-            )}
+              {lines.length > 0 && (
+                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setLines([])}>
+                  <Trash2 className="me-1 size-4" /> تفريغ
+                </Button>
+              )}
+            </div>
           </div>
+          {customOpen && (
+            <form
+              className="space-y-2 border-b bg-muted/40 p-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                addCustom();
+              }}
+            >
+              <Input
+                autoFocus
+                placeholder="اسم العنصر"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+              />
+              <div className="grid grid-cols-[1fr_90px] gap-2">
+                <NumberField
+                  value={customPrice}
+                  allowEmpty
+                  placeholder="السعر (د.ع)"
+                  aria-label="السعر"
+                  onValueChange={setCustomPrice}
+                />
+                <NumberField
+                  value={customQty}
+                  allowEmpty
+                  placeholder="العدد"
+                  aria-label="العدد"
+                  onValueChange={setCustomQty}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" className="flex-1">
+                  <Plus className="me-1 size-4" /> إضافة للقائمة
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setCustomOpen(false)}>
+                  إلغاء
+                </Button>
+              </div>
+            </form>
+          )}
           <div className="max-h-[38vh] min-h-[160px] flex-1 space-y-2 overflow-y-auto p-3">
             {lines.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
                 امسح باركود مادة أو اضغط عليها لإضافتها
               </p>
             ) : (
-              lines.map((l) => (
-                <div key={l.id} className="rounded-xl border p-2">
-                  <div className="flex items-start gap-2">
-                    <span className="min-w-0 flex-1 text-sm font-semibold">{l.name}</span>
-                    <button
-                      type="button"
-                      className="text-destructive"
-                      onClick={() => setLines((cur) => cur.filter((x) => x.id !== l.id))}
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </div>
-                  <div className="mt-1 flex items-center gap-2">
-                    <div className="flex items-center rounded-lg border">
-                      <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty - 1)}>
-                        <Minus className="size-4" />
-                      </button>
-                      <span className="w-8 text-center text-sm font-bold">{l.qty}</span>
-                      <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty + 1)}>
-                        <Plus className="size-4" />
+              lines.map((l) => {
+                const types = l.pid ? (typesOf.get(l.pid) ?? []) : [];
+                return (
+                  <div key={l.id} className="rounded-xl border p-2">
+                    <div className="flex items-start gap-2">
+                      <span className="min-w-0 flex-1 text-sm font-semibold">
+                        {l.name}
+                        {l.custom && <span className="ms-1 text-[10px] text-muted-foreground">(يدوي)</span>}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-destructive"
+                        onClick={() => setLines((cur) => cur.filter((x) => x.id !== l.id))}
+                      >
+                        <Trash2 className="size-4" />
                       </button>
                     </div>
-                    <span className="text-xs text-muted-foreground">× {money(l.price)}</span>
-                    <span className="ms-auto text-sm font-bold">{money(l.price * l.qty)}</span>
+                    {types.length > 1 && (
+                      <select
+                        aria-label="النوع"
+                        value={l.vid ?? ""}
+                        onChange={(e) => changeType(l.id, e.target.value)}
+                        className="mt-1 h-8 w-full rounded-lg border border-input bg-background px-2 text-xs"
+                      >
+                        {types.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.value_ar} {(Number(t.stock_qty) || 0) <= 0 ? "(نفد)" : `(${t.stock_qty})`}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="flex items-center rounded-lg border">
+                        <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty - 1)}>
+                          <Minus className="size-4" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-bold">{l.qty}</span>
+                        <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty + 1)}>
+                          <Plus className="size-4" />
+                        </button>
+                      </div>
+                      <span className="text-xs text-muted-foreground">× {money(l.price)}</span>
+                      <span className="ms-auto text-sm font-bold">{money(l.price * l.qty)}</span>
+                    </div>
+                    {!l.custom && l.qty > l.stock && (
+                      <p className="mt-1 text-xs text-destructive">المتوفر في المخزون {l.stock} فقط</p>
+                    )}
                   </div>
-                  {l.qty > l.stock && (
-                    <p className="mt-1 text-xs text-destructive">المتوفر في المخزون {l.stock} فقط</p>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
           <div className="space-y-2 border-t p-3">
@@ -534,13 +691,28 @@ export function CashierPanel() {
               <span>{money(total)}</span>
             </div>
           </div>
-          <div className="grid grid-cols-[auto_1fr] gap-2 p-3 pt-0">
+          <div className="grid grid-cols-[auto_1fr_1fr] gap-2 p-3 pt-0">
             <Button size="lg" variant="outline" className="h-14" onClick={() => void runDrawer()} title="فتح الجرار">
               <Vault className="size-5" />
             </Button>
-            <Button size="lg" className="h-14 text-base font-bold" disabled={busy || !lines.length} onClick={checkout}>
+            <Button
+              size="lg"
+              variant="secondary"
+              className="h-14 text-base font-bold"
+              disabled={busy || !lines.length}
+              onClick={() => void checkout(false)}
+            >
+              <Save className="me-2 size-5" />
+              {busy ? "جاري الحفظ..." : "حفظ"}
+            </Button>
+            <Button
+              size="lg"
+              className="h-14 text-base font-bold"
+              disabled={busy || !lines.length}
+              onClick={() => void checkout(true)}
+            >
               <Printer className="me-2 size-5" />
-              {busy ? "جاري التسجيل..." : "دفع وطباعة"}
+              {busy ? "جاري الحفظ..." : "حفظ وطباعة"}
             </Button>
           </div>
         </aside>

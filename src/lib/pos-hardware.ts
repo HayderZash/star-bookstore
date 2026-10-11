@@ -180,85 +180,104 @@ export function receiptToEscPos(r: ReceiptData): Uint8Array {
   ctx.fillRect(0, 0, WIDTH, canvas.height);
   ctx.fillStyle = "#000";
   ctx.direction = "rtl";
-  let y = 10;
+  let y = 6;
+  // Regular weight (not bold): fewer black dots = faster printing.
+  const font = (size: number, bold = false) => `${bold ? "bold " : ""}${size}px Tahoma, Arial, sans-serif`;
   const text = (s: string, size: number, align: CanvasTextAlign, bold = false, x?: number) => {
-    ctx.font = `${bold ? "bold " : ""}${size}px Tahoma, Arial, sans-serif`;
+    ctx.font = font(size, bold);
     ctx.textAlign = align;
     ctx.fillText(s, x ?? (align === "center" ? WIDTH / 2 : align === "right" ? WIDTH - pad : pad), y + size);
   };
+  /** Trim text with "…" so it fits in `max` px. */
+  const fit = (s: string, size: number, max: number) => {
+    ctx.font = font(size);
+    if (ctx.measureText(s).width <= max) return s;
+    let t = s;
+    while (t.length > 1 && ctx.measureText(`${t}…`).width > max) t = t.slice(0, -1);
+    return `${t}…`;
+  };
+  const width = (s: string, size: number, bold = false) => {
+    ctx.font = font(size, bold);
+    return ctx.measureText(s).width;
+  };
   const rule = () => {
-    ctx.fillRect(pad, y + 4, WIDTH - pad * 2, 2);
-    y += 14;
+    ctx.fillRect(pad, y + 3, WIDTH - pad * 2, 1);
+    y += 8;
   };
   if (r.logo) {
-    const h = 150;
+    const h = 90;
     const w = Math.round((r.logo.width / r.logo.height) * h) || h;
     try {
       ctx.drawImage(r.logo, (WIDTH - w) / 2, y, w, h);
-      y += h + 6;
+      y += h + 2;
     } catch {
       /* tainted/broken image — skip */
     }
   }
-  text(r.title, 38, "center", true);
-  y += 48;
+  text(r.title, 32, "center", true);
+  y += 38;
   for (const s of r.subtitle) {
-    text(s, 25, "center", true);
-    y += 33;
+    text(fit(s, 22, WIDTH - pad * 2), 22, "center");
+    y += 28;
   }
   rule();
+  const size = 24;
   for (const l of r.lines) {
-    text(l.name, 28, "right", true);
-    y += 36;
-    text(`${l.qty} ×`, 26, "right", true);
-    text(l.amount, 26, "left", true);
-    y += 34;
-    if (l.note) {
-      text(l.note, 23, "right", true);
-      y += 31;
+    // One line per item: name (right) · qty × amount (left). Long names wrap to a 2nd line max.
+    const right = `${l.qty} × ${l.amount}`;
+    const avail = WIDTH - pad * 2 - width(right, size) - 16;
+    const full = l.note ? `${l.name} (${l.note})` : l.name;
+    if (width(full, size) <= avail) {
+      text(full, size, "right");
+      text(right, size, "left");
+      y += size + 8;
+    } else {
+      text(fit(full, size, WIDTH - pad * 2), size, "right");
+      y += size + 4;
+      text(right, size, "left");
+      y += size + 8;
     }
-    y += 10; // gap between items
   }
   rule();
   for (const t of r.totals) {
-    const size = t.bold ? 34 : 27;
-    text(t.label, size, "right", true);
-    text(t.value, size, "left", true);
-    y += size + 10;
+    const s = t.bold ? 30 : 24;
+    text(t.label, s, "right", t.bold);
+    text(t.value, s, "left", t.bold);
+    y += s + 6;
   }
   if (r.barcode) {
-    y += 10;
+    y += 4;
     const bits = barcodeBits(r.barcode);
     const m = Math.max(1, Math.min(3, Math.floor((WIDTH - 40) / bits.length)));
     const x0 = Math.round((WIDTH - bits.length * m) / 2);
-    for (let i = 0; i < bits.length; i++) if (bits[i] === "1") ctx.fillRect(x0 + i * m, y, m, 70);
-    y += 74;
-    text(r.barcode, 20, "center");
-    y += 30;
+    for (let i = 0; i < bits.length; i++) if (bits[i] === "1") ctx.fillRect(x0 + i * m, y, m, 56);
+    y += 58;
+    text(r.barcode, 18, "center");
+    y += 24;
   }
   if (r.qrs?.length) {
-    y += 8;
+    y += 4;
     const cell = (WIDTH - pad * 2) / r.qrs.length;
     let tallest = 0;
     r.qrs.forEach((q, i) => {
-      const { size, on } = qrMatrix(q.text);
-      const m = Math.max(2, Math.floor(Math.min(150, cell - 20) / size));
-      const px = size * m;
+      const { size: qs, on } = qrMatrix(q.text);
+      const m = Math.max(2, Math.floor(Math.min(130, cell - 20) / qs));
+      const px = qs * m;
       // RTL: first QR on the right.
       const cx = WIDTH - pad - cell * i - cell / 2;
       const x0 = Math.round(cx - px / 2);
-      for (let rr = 0; rr < size; rr++)
-        for (let cc = 0; cc < size; cc++) if (on(rr, cc)) ctx.fillRect(x0 + cc * m, y + rr * m, m, m);
-      ctx.font = "18px Tahoma, Arial, sans-serif";
+      for (let rr = 0; rr < qs; rr++)
+        for (let cc = 0; cc < qs; cc++) if (on(rr, cc)) ctx.fillRect(x0 + cc * m, y + rr * m, m, m);
+      ctx.font = font(17);
       ctx.textAlign = "center";
-      ctx.fillText(q.label, cx, y + px + 22);
-      tallest = Math.max(tallest, px + 30);
+      ctx.fillText(q.label, cx, y + px + 20);
+      tallest = Math.max(tallest, px + 26);
     });
-    y += tallest + 6;
+    y += tallest + 2;
   }
-  y += 10;
-  text(r.footer, 24, "center", true);
-  y += 44;
+  y += 4;
+  text(fit(r.footer, 22, WIDTH - pad * 2), 22, "center");
+  y += 34;
 
   const height = y;
   const img = ctx.getImageData(0, 0, WIDTH, height).data;
