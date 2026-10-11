@@ -209,8 +209,13 @@ function thermalData(r: Receipt, settings: Record<string, string>, logo?: HTMLIm
   return {
     title: settings["store_name_ar"] || "مكتبة النجم",
     subtitle: [
-      phone,
-      `وصل #${r.sale_number} — ${new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn")}`,
+      [
+        phone,
+        `#${r.sale_number}`,
+        new Date(r.created_at).toLocaleString("ar-IQ-u-nu-latn", { dateStyle: "short", timeStyle: "short" }),
+      ]
+        .filter(Boolean)
+        .join(" · "),
       r.customer_name ? `الزبون: ${r.customer_name}` : "",
     ].filter(Boolean),
     lines: r.lines.map((l) => {
@@ -219,7 +224,7 @@ function thermalData(r: Receipt, settings: Record<string, string>, logo?: HTMLIm
         name: l.name,
         qty: l.qty,
         amount: money(l.price * l.qty),
-        note: o > l.price ? `قبل الخصم ${money(o)} — خصم ${money((o - l.price) * l.qty)}` : undefined,
+        note: o > l.price ? `خصم ${money((o - l.price) * l.qty)}` : undefined,
       };
     }),
     totals: totalsOf(r),
