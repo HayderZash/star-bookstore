@@ -23,6 +23,7 @@ import {
   Tag,
   PackageSearch,
   ScanBarcode,
+  Package,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -44,6 +45,16 @@ import { settingsQuery } from "@/lib/queries";
 import { whatsappLink } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import najmLogo from "@/lib/store-logo";
+import { useCustomerNav } from "@/lib/customer-nav";
+
+function useNavItems(isAdmin: boolean) {
+  const [show] = useCustomerNav();
+  const hide = isAdmin && !show;
+  return {
+    nav: hide ? NAV.filter((n) => n.key === "account") : NAV,
+    extra: hide ? [] : EXTRA_NAV,
+  };
+}
 
 const NAV = [
   { to: "/", key: "home", icon: Home },
@@ -147,6 +158,7 @@ function SideMenu({
 }) {
   const { t, lang } = useLang();
   const [open, setOpen] = useState(false);
+  const { nav, extra } = useNavItems(isAdmin);
   const about = lang === "ar" ? settings?.["store_about_ar"] : settings?.["store_about_en"];
 
   const contacts = [
@@ -182,7 +194,7 @@ function SideMenu({
         </SheetHeader>
 
         <nav className="space-y-1 p-3">
-          {NAV.map(({ to, key, icon: Icon }) => (
+          {nav.map(({ to, key, icon: Icon }) => (
             <Link
               key={to}
               to={to}
@@ -196,8 +208,8 @@ function SideMenu({
               {t(key)}
             </Link>
           ))}
-          <div className="my-2 border-t" />
-          {EXTRA_NAV.map(({ to, key, icon: Icon }) => (
+          {extra.length > 0 && <div className="my-2 border-t" />}
+          {extra.map(({ to, key, icon: Icon }) => (
             <Link
               key={to}
               to={to}
@@ -234,6 +246,17 @@ function SideMenu({
               >
                 <ClipboardList className="size-4 shrink-0" />
                 الطلبات
+              </Link>
+              <Link
+                to="/manage-products"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground",
+                  pathname === "/manage-products" && "bg-primary-soft text-accent-foreground",
+                )}
+              >
+                <Package className="size-4 shrink-0" />
+                المنتجات
               </Link>
             </>
           )}
@@ -303,6 +326,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: settings } = useQuery(settingsQuery);
   const support = settings?.["support_whatsapp"];
+  const { nav } = useNavItems(isAdmin);
   const storeName = (lang === "ar" ? settings?.["store_name_ar"] : settings?.["store_name_en"]) || "مكتبة النجم";
 
   return (
@@ -325,7 +349,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SearchBox className="mx-auto w-full max-w-md" />
 
           <nav className="hidden items-center gap-1 md:flex">
-            {NAV.map(({ to, key, icon: Icon }) => (
+            {nav.map(({ to, key, icon: Icon }) => (
               <Link
                 key={to}
                 to={to}
@@ -365,6 +389,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 <ClipboardList className="size-4" />
                 الطلبات
+              </Link>
+            )}
+            {isAdmin && (
+              <Link
+                to="/manage-products"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground",
+                  pathname === "/manage-products" && "bg-primary-soft text-accent-foreground",
+                )}
+              >
+                <Package className="size-4" />
+                المنتجات
               </Link>
             )}
             {isAdmin && (
@@ -416,7 +452,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur md:hidden">
         <div className="mx-auto flex max-w-6xl items-stretch">
-          {NAV.map(({ to, key, icon: Icon }) => {
+          {nav.map(({ to, key, icon: Icon }) => {
             const active = pathname === to;
             return (
               <Link
@@ -449,6 +485,30 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <ScanBarcode className="size-5" />
               الكاشير
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
+              to="/manage-orders"
+              className={cn(
+                "flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground",
+                pathname === "/manage-orders" && "text-primary",
+              )}
+            >
+              <ClipboardList className="size-5" />
+              الطلبات
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
+              to="/manage-products"
+              className={cn(
+                "flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground",
+                pathname === "/manage-products" && "text-primary",
+              )}
+            >
+              <Package className="size-5" />
+              المنتجات
             </Link>
           )}
           {isAdmin && (
