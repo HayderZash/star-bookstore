@@ -49,6 +49,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useCustomerNav } from "@/lib/customer-nav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Pagination } from "@/components/Pagination";
@@ -295,6 +297,50 @@ function Panel({
 }
 
 
+function CustomerNavToggle() {
+  const [show, setShow] = useCustomerNav();
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-4">
+      <div>
+        <p className="text-sm font-bold">إظهار أقسام الزبون</p>
+        <p className="text-xs text-muted-foreground">الرئيسية، الأقسام، السلة، طلباتي، العروض... (مخفية افتراضياً لحساب الإدارة)</p>
+      </div>
+      <Switch checked={show} onCheckedChange={setShow} />
+    </div>
+  );
+}
+
+/** Add form sits inline; editing an existing product opens a focused popup. */
+function ProductFormShell({
+  editing,
+  openSignal,
+  onClose,
+  children,
+}: {
+  editing: boolean;
+  openSignal: number;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (editing)
+    return (
+      <Dialog open onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>تعديل منتج</DialogTitle>
+            <DialogDescription>عدّل البيانات ثم اضغط حفظ التعديلات</DialogDescription>
+          </DialogHeader>
+          {children}
+        </DialogContent>
+      </Dialog>
+    );
+  return (
+    <Panel id="product-new" openSignal={openSignal} title="إضافة منتج" desc="أدخل بيانات المنتج الجديد" defaultOpen={false}>
+      {children}
+    </Panel>
+  );
+}
+
 function IconPicker({
   value,
   onChange,
@@ -352,7 +398,7 @@ const emptyProduct = {
 
 
 
-export function AdminPage({ ordersOnly = false }: { ordersOnly?: boolean }) {
+export function AdminPage({ ordersOnly = false, productsOnly = false }: { ordersOnly?: boolean; productsOnly?: boolean }) {
   const { lang } = useLang();
   const { isAdmin, loading } = useAuth();
   const qc = useQueryClient();
@@ -426,9 +472,10 @@ export function AdminPage({ ordersOnly = false }: { ordersOnly?: boolean }) {
 
   useEffect(() => {
     if (ordersOnly) return setTab("orders");
+    if (productsOnly) return setTab("products");
     const stored = urlTab ?? localStorage.getItem("admin_tab");
     if (stored && stored !== "orders" && stored !== "cashier") setTab(stored);
-  }, [urlTab, ordersOnly]);
+  }, [urlTab, ordersOnly, productsOnly]);
 
   useEffect(() => {
     setProdPage(1);
@@ -632,7 +679,7 @@ export function AdminPage({ ordersOnly = false }: { ordersOnly?: boolean }) {
     { value: "settings", label: "الإعدادات", desc: "معلومات المتجر والتواصل", icon: Settings },
   ];
   const active = sections.find((s) => s.value === tab) ?? sections[0]!;
-  const orderMode = ordersOnly;
+  const orderMode = ordersOnly || productsOnly;
 
   const changeTab = (v: string) => {
     setTab(v);
@@ -643,9 +690,9 @@ export function AdminPage({ ordersOnly = false }: { ordersOnly?: boolean }) {
     <div className="space-y-6">
       <header className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <div className="min-w-0 space-y-1">
-          <h1 className="truncate text-xl font-bold">{orderMode ? "الطلبات" : "لوحة الإدارة"}</h1>
+          <h1 className="truncate text-xl font-bold">{productsOnly ? "المنتجات" : orderMode ? "الطلبات" : "لوحة الإدارة"}</h1>
           <p className="text-xs text-muted-foreground">
-            {orderMode ? "متابعة طلبات الزبائن وتحديث حالتها" : "إدارة المتجر مقسّمة إلى أقسام مستقلة"}
+            {productsOnly ? "إضافة وتعديل المنتجات والمخزون" : orderMode ? "متابعة طلبات الزبائن وتحديث حالتها" : "إدارة المتجر مقسّمة إلى أقسام مستقلة"}
           </p>
         </div>
         <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[18rem_auto_auto]">
@@ -997,11 +1044,13 @@ export function AdminPage({ ordersOnly = false }: { ordersOnly?: boolean }) {
             products={(products.data ?? []) as never}
             onDone={() => invalidate(["products"])}
           />
-          <Panel
-            id="product-new"
+          <ProductFormShell
+            editing={!!editingId}
             openSignal={editSignal}
-            title={editingId ? "تعديل منتج" : "إضافة منتج"}
-            desc={editingId ? "عدّل بيانات المنتج ثم احفظ" : "أدخل بيانات المنتج الجديد"}
+            onClose={() => {
+              setEditingId(null);
+              setPform({ ...emptyProduct });
+            }}
           >
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -1175,7 +1224,7 @@ export function AdminPage({ ordersOnly = false }: { ordersOnly?: boolean }) {
             </div>
 
           </div>
-          </Panel>
+          </ProductFormShell>
 
           {lowStock.length > 0 && (
             <div className="rounded-2xl border border-warning bg-warning/10 p-4 text-sm">
@@ -1840,6 +1889,7 @@ export function AdminPage({ ordersOnly = false }: { ordersOnly?: boolean }) {
 
 
         <TabsContent value="settings" className="space-y-4">
+          <CustomerNavToggle />
           <Panel id="set-store" title="معلومات المتجر" desc="الاسم والشعار والنبذة التعريفية">
             <div className="grid gap-4 sm:grid-cols-2">
               {[
