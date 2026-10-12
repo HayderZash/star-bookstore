@@ -24,6 +24,7 @@ import {
   PackageSearch,
   ScanBarcode,
   Package,
+  TrendingUp,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -258,6 +259,17 @@ function SideMenu({
                 <Package className="size-4 shrink-0" />
                 المنتجات
               </Link>
+              <Link
+                to="/manage-profits"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground",
+                  pathname === "/manage-profits" && "bg-primary-soft text-accent-foreground",
+                )}
+              >
+                <TrendingUp className="size-4 shrink-0" />
+                الأرباح
+              </Link>
             </>
           )}
           {isAdmin && (
@@ -405,6 +417,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
             {isAdmin && (
               <Link
+                to="/manage-profits"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground",
+                  pathname === "/manage-profits" && "bg-primary-soft text-accent-foreground",
+                )}
+              >
+                <TrendingUp className="size-4" />
+                الأرباح
+              </Link>
+            )}
+            {isAdmin && (
+              <Link
                 to="/admin"
                 className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-sand hover:text-foreground"
               >
@@ -509,6 +533,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <Package className="size-5" />
               المنتجات
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
+              to="/manage-profits"
+              className={cn(
+                "flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground",
+                pathname === "/manage-profits" && "text-primary",
+              )}
+            >
+              <TrendingUp className="size-5" />
+              الأرباح
             </Link>
           )}
           {isAdmin && (
