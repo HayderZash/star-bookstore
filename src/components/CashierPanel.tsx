@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberField } from "@/components/NumberField";
+import { PeriodPicker, defaultPeriod, periodBounds, periodLabel, type Period } from "@/components/PeriodPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { formatIQD } from "@/lib/format";
 import storeLogo from "@/lib/store-logo";
@@ -774,28 +775,50 @@ type SavedSale = {
   subtotal: number;
   discount_amount: number;
   total_amount: number;
-  pos_sale_items: { product_name: string; quantity: number; unit_price: number; original_price: number | null }[];
+  pos_sale_items: { product_name: string; quantity: number; unit_price: number; original_price: number | null; cost_price: number | null }[];
 };
 
 /** Saved cashier invoices: review, reprint, or delete (stock goes back). */
 function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
   const qc = useQueryClient();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [period, setPeriod] = useState<Period>(defaultPeriod);
+  const bounds = periodBounds(period);
 
   const sales = useQuery({
-    queryKey: ["pos-sales"],
+    queryKey: ["pos-sales", bounds.from, bounds.to],
     queryFn: async (): Promise<SavedSale[]> => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("pos_sales")
         .select(
-          "id, sale_number, created_at, customer_name, phone, subtotal, discount_amount, total_amount, pos_sale_items(product_name, quantity, unit_price, original_price)",
+          "id, sale_number, created_at, customer_name, phone, subtotal, discount_amount, total_amount, pos_sale_items(product_name, quantity, unit_price, original_price, cost_price)",
         )
         .order("created_at", { ascending: false })
-        .limit(100);
+        .limit(1000);
+      if (bounds.from) q = q.gte("created_at", bounds.from);
+      if (bounds.to) q = q.lte("created_at", bounds.to);
+      const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as unknown as SavedSale[];
     },
   });
+
+  const stats = (sales.data ?? []).reduce(
+    (a, s) => {
+      const lineProfit = (s.pos_sale_items ?? []).reduce(
+        (p, i) => p + (Number(i.unit_price) - (Number(i.cost_price) || 0)) * Number(i.quantity),
+        0,
+      );
+      const disc = Number(s.discount_amount) || 0;
+      return {
+        count: a.count + 1,
+        total: a.total + (Number(s.total_amount) || 0),
+        disc: a.disc + disc,
+        profit: a.profit + lineProfit - disc,
+      };
+    },
+    { count: 0, total: 0, disc: 0, profit: 0 },
+  );
 
   const remove = async (s: SavedSale) => {
     if (!window.confirm(`حذف الفاتورة #${s.sale_number}؟ سترجع الكميات للمخزون وتُحذف من الأرباح.`))
@@ -815,13 +838,28 @@ function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
 
   return (
     <div className="space-y-3 rounded-2xl border bg-card p-4">
-      <h3 className="text-base font-semibold">الفواتير المحفوظة</h3>
+      <h3 className="text-base font-semibold">الفواتير المحفوظة — {periodLabel(period)}</h3>
+      <PeriodPicker value={period} onChange={setPeriod} />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {[
+          ["عدد الفواتير", String(stats.count)],
+          ["مجموع المبيعات", money(stats.total)],
+          ["خصومات", `-${money(stats.disc)}`],
+          ["صافي الربح", money(stats.profit)],
+        ].map(([l, v]) => (
+          <div key={l} className="rounded-xl border p-2">
+            <p className="text-xs text-muted-foreground">{l}</p>
+            <p className="font-bold text-primary">{v}</p>
+          </div>
+        ))}
+      </div>
       {sales.isLoading ? (
         <p className="text-sm text-muted-foreground">جاري التحميل...</p>
       ) : !sales.data?.length ? (
-        <p className="text-sm text-muted-foreground">لا توجد فواتير بعد.</p>
+        <p className="text-sm text-muted-foreground">لا توجد فواتير في هذه الفترة.</p>
       ) : (
         <div className="space-y-2">
+
           {sales.data.map((s) => (
             <div key={s.id} className="flex flex-wrap items-center gap-2 rounded-xl border p-2 text-sm">
               <span className="font-bold">#{s.sale_number}</span>

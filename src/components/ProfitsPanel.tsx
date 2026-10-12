@@ -3,8 +3,7 @@ import { Printer } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { PeriodPicker, defaultPeriod, periodBounds, type Period } from "@/components/PeriodPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { formatIQD } from "@/lib/format";
 
@@ -71,17 +70,19 @@ function reportHtml(rows: Row[], from: string, to: string, disc: number) {
 
 /** Admin-only profit report over online orders and cashier sales. */
 export function ProfitsPanel() {
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [period, setPeriod] = useState<Period>(defaultPeriod);
+  const { from: f, to: t } = periodBounds(period);
+  const from = period.mode === "day" ? period.day : period.mode === "range" ? period.from : "";
+  const to = period.mode === "day" ? period.day : period.mode === "range" ? period.to : "";
   const [printing, setPrinting] = useState(false);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
 
   const report = useQuery({
-    queryKey: ["profit-report", from, to],
+    queryKey: ["profit-report", f, t],
     queryFn: async (): Promise<Row[]> => {
       const { data, error } = await supabase.rpc("profit_report", {
-        ...(from ? { _from: new Date(from).toISOString() } : {}),
-        ...(to ? { _to: new Date(`${to}T23:59:59`).toISOString() } : {}),
+        ...(f ? { _from: f } : {}),
+        ...(t ? { _to: t } : {}),
       });
       if (error) throw error;
       return (data ?? []) as Row[];
@@ -89,10 +90,8 @@ export function ProfitsPanel() {
   });
 
   const discounts = useQuery({
-    queryKey: ["profit-discounts", from, to],
+    queryKey: ["profit-discounts", f, t],
     queryFn: async () => {
-      const f = from ? new Date(from).toISOString() : null;
-      const t = to ? new Date(`${to}T23:59:59`).toISOString() : null;
       let o = supabase.from("orders").select("discount_amount").eq("status", "completed");
       let p = supabase.from("pos_sales").select("discount_amount");
       if (f) { o = o.gte("created_at", f); p = p.gte("created_at", f); }
@@ -120,14 +119,7 @@ export function ProfitsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3 rounded-2xl border bg-card p-4">
-        <div className="space-y-1">
-          <Label>من تاريخ</Label>
-          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        </div>
-        <div className="space-y-1">
-          <Label>إلى تاريخ</Label>
-          <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        </div>
+        <PeriodPicker value={period} onChange={setPeriod} />
         <Button variant="outline" onClick={() => { report.refetch(); discounts.refetch(); }}>
           تحديث
         </Button>
