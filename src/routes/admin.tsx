@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { ImagePlus, Layers, Loader2 as Loader2Icon } from "lucide-react";
 import {
   ChevronDown,
   ClipboardList,
@@ -146,6 +147,60 @@ async function compressImage(file: File, max = 1600, target = 700 * 1024): Promi
     height = Math.max(1, Math.round(height * 0.8));
   }
   return file;
+}
+
+/** Row button: upload one or more photos straight onto a product. */
+function QuickImageUpload({
+  product,
+  onDone,
+}: {
+  product: { id: string; image_url: string | null; images: string[] | null };
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <label
+      title="رفع صور"
+      aria-label="رفع صور"
+      className="inline-flex size-9 cursor-pointer items-center justify-center rounded-md hover:bg-accent"
+    >
+      {busy ? <Loader2Icon className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        disabled={busy}
+        onChange={async (e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          if (!files.length) return;
+          setBusy(true);
+          try {
+            const urls: string[] = [];
+            for (const f of files) urls.push(await uploadMedia(f, "products"));
+            let main = product.image_url;
+            const extra = [...(product.images ?? [])];
+            for (const u of urls) {
+              if (!main) main = u;
+              else extra.push(u);
+            }
+            const { error } = await supabase
+              .from("products")
+              .update({ image_url: main, images: extra })
+              .eq("id", product.id);
+            if (error) throw error;
+            toast.success(`تم رفع ${urls.length} صورة`);
+            onDone();
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "تعذّر الرفع");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+    </label>
+  );
 }
 
 /** Uploads to the private store-media bucket and returns a long-lived signed URL. */
@@ -450,6 +505,7 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
   });
   const [prodPage, setProdPage] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [variantsFor, setVariantsFor] = useState<{ id: string; name: string } | null>(null);
   const [editSignal, setEditSignal] = useState(0);
   const [prevDiscount, setPrevDiscount] = useState<number | null>(null);
   const [couponForm, setCouponForm] = useState({
@@ -1261,6 +1317,17 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
             title={`قائمة المنتجات (${visibleProducts.length})`}
             desc="100 منتج في كل صفحة — البحث يشمل كل المنتجات"
           >
+          {variantsFor && (
+            <Dialog open onOpenChange={(v) => !v && setVariantsFor(null)}>
+              <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>أنواع: {variantsFor.name}</DialogTitle>
+                  <DialogDescription>أضف أو احذف أنواع هذا المنتج مباشرة</DialogDescription>
+                </DialogHeader>
+                <ProductVariantsEditor productId={variantsFor.id} />
+              </DialogContent>
+            </Dialog>
+          )}
           <div className="space-y-3">
             {visibleProducts
               .slice((Math.min(prodPage, Math.max(1, Math.ceil(visibleProducts.length / ADMIN_PER_PAGE))) - 1) * ADMIN_PER_PAGE, Math.min(prodPage, Math.max(1, Math.ceil(visibleProducts.length / ADMIN_PER_PAGE))) * ADMIN_PER_PAGE)
@@ -1304,6 +1371,19 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
                     }
                   }}
                 />
+                <QuickImageUpload
+                  product={p}
+                  onDone={() => invalidate(["products"])}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="الأنواع"
+                  title="الأنواع"
+                  onClick={() => setVariantsFor({ id: p.id, name: p.name_ar })}
+                >
+                  <Layers className="size-4" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
