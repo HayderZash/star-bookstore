@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { ImagePlus, Layers, Loader2 as Loader2Icon } from "lucide-react";
 import {
   ChevronDown,
   ClipboardList,
@@ -1316,6 +1317,17 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
             title={`قائمة المنتجات (${visibleProducts.length})`}
             desc="100 منتج في كل صفحة — البحث يشمل كل المنتجات"
           >
+          {variantsFor && (
+            <Dialog open onOpenChange={(v) => !v && setVariantsFor(null)}>
+              <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>أنواع: {variantsFor.name}</DialogTitle>
+                  <DialogDescription>أضف أو احذف أنواع هذا المنتج مباشرة</DialogDescription>
+                </DialogHeader>
+                <ProductVariantsEditor productId={variantsFor.id} />
+              </DialogContent>
+            </Dialog>
+          )}
           <div className="space-y-3">
             {visibleProducts
               .slice((Math.min(prodPage, Math.max(1, Math.ceil(visibleProducts.length / ADMIN_PER_PAGE))) - 1) * ADMIN_PER_PAGE, Math.min(prodPage, Math.max(1, Math.ceil(visibleProducts.length / ADMIN_PER_PAGE))) * ADMIN_PER_PAGE)
