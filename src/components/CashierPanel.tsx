@@ -657,7 +657,12 @@ export function CashierPanel() {
                         <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty - 1)}>
                           <Minus className="size-4" />
                         </button>
-                        <span className="w-8 text-center text-sm font-bold">{l.qty}</span>
+                        <NumberField
+                          aria-label="العدد"
+                          value={l.qty}
+                          onValueChange={(v) => setQty(l.id, Math.max(1, v ?? 1))}
+                          className="h-8 w-14 border-0 px-1 text-center text-sm font-bold shadow-none focus-visible:ring-0"
+                        />
                         <button type="button" className="p-1.5" onClick={() => setQty(l.id, l.qty + 1)}>
                           <Plus className="size-4" />
                         </button>
