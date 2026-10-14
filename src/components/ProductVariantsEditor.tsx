@@ -64,7 +64,7 @@ export function ProductVariantsEditor({ productId }: { productId: string }) {
     <div className="space-y-3 rounded-2xl border bg-card p-4 sm:col-span-2">
       <div className="text-sm font-bold">خيارات المنتج (لون، حجم، ...)</div>
       <p className="text-xs text-muted-foreground">
-        أضف مجموعة الخيار (مثال: اللون) وقيمتها (مثال: أحمر). فرق السعر يُضاف لسعر المنتج.
+        أضف مجموعة الخيار (مثال: اللون) وقيمتها (مثال: أحمر). فرق السعر يُضاف لسعر المنتج. إذا تركت الكمية 0 فالنوع يأخذ من الكمية الرئيسية للمنتج.
       </p>
 
       {rows.length > 0 && (
