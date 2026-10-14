@@ -148,6 +148,60 @@ async function compressImage(file: File, max = 1600, target = 700 * 1024): Promi
   return file;
 }
 
+/** Row button: upload one or more photos straight onto a product. */
+function QuickImageUpload({
+  product,
+  onDone,
+}: {
+  product: { id: string; image_url: string | null; images: string[] | null };
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <label
+      title="رفع صور"
+      aria-label="رفع صور"
+      className="inline-flex size-9 cursor-pointer items-center justify-center rounded-md hover:bg-accent"
+    >
+      {busy ? <Loader2Icon className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        disabled={busy}
+        onChange={async (e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          if (!files.length) return;
+          setBusy(true);
+          try {
+            const urls: string[] = [];
+            for (const f of files) urls.push(await uploadMedia(f, "products"));
+            let main = product.image_url;
+            const extra = [...(product.images ?? [])];
+            for (const u of urls) {
+              if (!main) main = u;
+              else extra.push(u);
+            }
+            const { error } = await supabase
+              .from("products")
+              .update({ image_url: main, images: extra })
+              .eq("id", product.id);
+            if (error) throw error;
+            toast.success(`تم رفع ${urls.length} صورة`);
+            onDone();
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : "تعذّر الرفع");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+    </label>
+  );
+}
+
 /** Uploads to the private store-media bucket and returns a long-lived signed URL. */
 async function uploadMedia(input: File, folder: string) {
   const file = await compressImage(input);
@@ -450,6 +504,7 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
   });
   const [prodPage, setProdPage] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [variantsFor, setVariantsFor] = useState<{ id: string; name: string } | null>(null);
   const [editSignal, setEditSignal] = useState(0);
   const [prevDiscount, setPrevDiscount] = useState<number | null>(null);
   const [couponForm, setCouponForm] = useState({
@@ -1304,6 +1359,19 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
                     }
                   }}
                 />
+                <QuickImageUpload
+                  product={p}
+                  onDone={() => invalidate(["products"])}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="الأنواع"
+                  title="الأنواع"
+                  onClick={() => setVariantsFor({ id: p.id, name: p.name_ar })}
+                >
+                  <Layers className="size-4" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
