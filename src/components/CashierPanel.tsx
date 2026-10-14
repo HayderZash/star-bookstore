@@ -364,7 +364,8 @@ export function CashierPanel() {
       price: sellPrice(p) + delta,
       orig: (Number(p.price) || sellPrice(p)) + delta,
       qty: 1,
-      stock: v ? Math.min(Number(v.stock_qty) || 0, pStock) : pStock,
+      // Type stock 0 = untracked: the line is limited by the main product stock.
+      stock: v && (Number(v.stock_qty) || 0) > 0 ? Math.min(Number(v.stock_qty) || 0, pStock) : pStock,
     };
   };
 
@@ -646,7 +647,7 @@ export function CashierPanel() {
                       >
                         {types.map((t) => (
                           <option key={t.id} value={t.id}>
-                            {t.value_ar} {(Number(t.stock_qty) || 0) <= 0 ? "(نفد)" : `(${t.stock_qty})`}
+                            {t.value_ar} {(Number(t.stock_qty) || 0) <= 0 ? "(من المخزون الرئيسي)" : `(${t.stock_qty})`}
                           </option>
                         ))}
                       </select>
