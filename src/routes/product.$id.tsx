@@ -276,7 +276,7 @@ function ProductPage() {
                     <div className="text-xs font-medium text-muted-foreground">{label}</div>
                     <div className="flex flex-wrap gap-2">
                       {opts.map((v) => {
-                        const out = v.stock_qty <= 0;
+                        const out = v.stock_qty <= 0 && product.stock_qty <= 0;
                         const on = picked[g] === v.id;
                         return (
                           <button
