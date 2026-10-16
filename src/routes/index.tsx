@@ -109,7 +109,7 @@ function Home() {
 
   const deals = all.filter((p) => discountPercent(p) > 0).slice(0, 8);
   const lastPieces = all.filter((p) => p.stock_qty > 0 && p.stock_qty <= 2).slice(0, 8);
-  const featured = all.filter((p) => p.is_featured).slice(0, 8);
+  const featured = all.filter((p) => p.is_featured);
   const roots = (categories.data ?? []).filter((c) => !c.parent_id);
   const catPath = (id: string | null) => categoryPathLabel(lang, categories.data ?? [], id);
 
