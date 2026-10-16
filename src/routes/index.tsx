@@ -202,13 +202,16 @@ function Home() {
       )}
 
       {featured.length > 0 && (
-        <Section title={t("featured")}>
+        <section className="mt-7 rounded-3xl border-2 border-primary/30 bg-primary/5 p-3 shadow-lg sm:p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-primary">
+            <span aria-hidden>★</span> {t("featured")}
+          </h2>
           <Grid>
             {featured.map((p) => (
               <ProductCard key={p.id} product={p} categoryPath={catPath(p.category_id)} />
             ))}
           </Grid>
-        </Section>
+        </section>
       )}
 
       {popular.length > 0 && (

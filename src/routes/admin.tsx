@@ -53,6 +53,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCustomerNav } from "@/lib/customer-nav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FeaturedPicker } from "@/components/FeaturedPicker";
 import { Textarea } from "@/components/ui/textarea";
 import { Pagination } from "@/components/Pagination";
 import { AiSettingsPanel } from "@/components/AiSettingsPanel";
@@ -1970,6 +1971,7 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
 
         <TabsContent value="settings" className="space-y-4">
           <CustomerNavToggle />
+          <FeaturedPicker />
           <Panel id="set-store" title="معلومات المتجر" desc="الاسم والشعار والنبذة التعريفية">
             <div className="grid gap-4 sm:grid-cols-2">
               {[
