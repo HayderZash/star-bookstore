@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberField } from "@/components/NumberField";
 import { PeriodPicker, defaultPeriod, periodBounds, periodLabel, type Period } from "@/components/PeriodPicker";
+import { ReturnButton } from "@/components/ReturnButton";
 import { supabase } from "@/integrations/supabase/client";
 import { formatIQD } from "@/lib/format";
 import storeLogo from "@/lib/store-logo";
@@ -781,7 +782,7 @@ type SavedSale = {
   subtotal: number;
   discount_amount: number;
   total_amount: number;
-  pos_sale_items: { product_name: string; quantity: number; unit_price: number; original_price: number | null; cost_price: number | null }[];
+  pos_sale_items: { id: string; product_name: string; quantity: number; unit_price: number; original_price: number | null; cost_price: number | null; returned_qty: number }[];
 };
 
 /** Saved cashier invoices: review, reprint, or delete (stock goes back). */
@@ -797,7 +798,7 @@ function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
       let q = supabase
         .from("pos_sales")
         .select(
-          "id, sale_number, created_at, customer_name, phone, subtotal, discount_amount, total_amount, pos_sale_items(product_name, quantity, unit_price, original_price, cost_price)",
+          "id, sale_number, created_at, customer_name, phone, subtotal, discount_amount, total_amount, pos_sale_items(id, product_name, quantity, unit_price, original_price, cost_price, returned_qty)",
         )
         .order("created_at", { ascending: false })
         .limit(1000);
@@ -811,19 +812,28 @@ function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
 
   const stats = (sales.data ?? []).reduce(
     (a, s) => {
-      const lineProfit = (s.pos_sale_items ?? []).reduce(
-        (p, i) => p + (Number(i.unit_price) - (Number(i.cost_price) || 0)) * Number(i.quantity),
+      const items = s.pos_sale_items ?? [];
+      const lineProfit = items.reduce(
+        (p, i) =>
+          p +
+          (Number(i.unit_price) - (Number(i.cost_price) || 0)) *
+            (Number(i.quantity) - (Number(i.returned_qty) || 0)),
+        0,
+      );
+      const ret = items.reduce(
+        (p, i) => p + Number(i.unit_price) * (Number(i.returned_qty) || 0),
         0,
       );
       const disc = Number(s.discount_amount) || 0;
       return {
         count: a.count + 1,
-        total: a.total + (Number(s.total_amount) || 0),
+        total: a.total + (Number(s.total_amount) || 0) - ret,
         disc: a.disc + disc,
+        ret: a.ret + ret,
         profit: a.profit + lineProfit - disc,
       };
     },
-    { count: 0, total: 0, disc: 0, profit: 0 },
+    { count: 0, total: 0, disc: 0, ret: 0, profit: 0 },
   );
 
   const remove = async (s: SavedSale) => {
@@ -846,11 +856,12 @@ function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
     <div className="space-y-3 rounded-2xl border bg-card p-4">
       <h3 className="text-base font-semibold">الفواتير المحفوظة — {periodLabel(period)}</h3>
       <PeriodPicker value={period} onChange={setPeriod} />
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {[
           ["عدد الفواتير", String(stats.count)],
           ["مجموع المبيعات", money(stats.total)],
           ["خصومات", `-${money(stats.disc)}`],
+          ["مرتجعات", `-${money(stats.ret)}`],
           ["صافي الربح", money(stats.profit)],
         ].map(([l, v]) => (
           <div key={l} className="rounded-xl border p-2">
@@ -912,6 +923,21 @@ function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
               >
                 <Trash2 className="size-4" />
               </Button>
+              <ul className="w-full space-y-1 border-t pt-1 text-xs">
+                {(s.pos_sale_items ?? []).map((i) => (
+                  <li key={i.id} className="flex flex-wrap items-center gap-2">
+                    <span className="flex-1">
+                      {i.product_name} × {i.quantity} — {money(Number(i.unit_price) * Number(i.quantity))}
+                    </span>
+                    <ReturnButton
+                      source="cashier"
+                      itemId={i.id}
+                      quantity={Number(i.quantity) || 0}
+                      returned={Number(i.returned_qty) || 0}
+                    />
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
