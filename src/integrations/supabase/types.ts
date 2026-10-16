@@ -249,6 +249,7 @@ export type Database = {
           product_id: string | null
           product_name: string
           quantity: number
+          returned_qty: number
           unit_price: number
         }
         Insert: {
@@ -259,6 +260,7 @@ export type Database = {
           product_id?: string | null
           product_name?: string
           quantity?: number
+          returned_qty?: number
           unit_price?: number
         }
         Update: {
@@ -269,6 +271,7 @@ export type Database = {
           product_id?: string | null
           product_name?: string
           quantity?: number
+          returned_qty?: number
           unit_price?: number
         }
         Relationships: [
@@ -368,6 +371,7 @@ export type Database = {
           product_id: string | null
           product_name: string
           quantity: number
+          returned_qty: number
           sale_id: string
           unit_price: number
           variant_id: string | null
@@ -380,6 +384,7 @@ export type Database = {
           product_id?: string | null
           product_name?: string
           quantity?: number
+          returned_qty?: number
           sale_id: string
           unit_price?: number
           variant_id?: string | null
@@ -392,6 +397,7 @@ export type Database = {
           product_id?: string | null
           product_name?: string
           quantity?: number
+          returned_qty?: number
           sale_id?: string
           unit_price?: number
           variant_id?: string | null
@@ -743,6 +749,10 @@ export type Database = {
     Functions: {
       admin_delete_order: { Args: { _order_id: string }; Returns: string }
       admin_delete_pos_sale: { Args: { _sale_id: string }; Returns: string }
+      admin_return_item: {
+        Args: { _item_id: string; _qty: number; _source: string }
+        Returns: string
+      }
       admin_set_item_unavailable: {
         Args: { _flag: boolean; _item_id: string }
         Returns: number
@@ -799,6 +809,15 @@ export type Database = {
       resolve_order_issue: {
         Args: { _action: string; _order_id: string }
         Returns: string
+      }
+      returns_report: {
+        Args: { _from?: string; _to?: string }
+        Returns: {
+          product_name: string
+          returned_qty: number
+          returned_value: number
+          source: string
+        }[]
       }
       track_order: {
         Args: { _order_number: number; _phone: string }

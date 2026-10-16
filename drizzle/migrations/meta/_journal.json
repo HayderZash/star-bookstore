@@ -36,6 +36,13 @@
       "when": 1791998211993,
       "tag": "0004_variant_zero_stock_uses_product_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792169983636,
+      "tag": "0005_item_returns",
+      "breakpoints": true
     }
   ]
 }
