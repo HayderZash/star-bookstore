@@ -305,3 +305,9 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* إخفاء شارة نتليفي نهائياً */
+
+a[href*="netlify.com"] {
+    display: none !important;
+}
