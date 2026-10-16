@@ -40,6 +40,8 @@ type Line = {
   custom?: boolean;
   name: string;
   price: number;
+  /** Cost price for hand-typed items (used in the profits report). */
+  cost?: number;
   orig?: number;
   qty: number;
   stock: number;
@@ -266,6 +268,7 @@ export function CashierPanel() {
   const [customOpen, setCustomOpen] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState<number | null>(null);
+  const [customCost, setCustomCost] = useState<number | null>(null);
   const [customQty, setCustomQty] = useState<number | null>(1);
 
   useEffect(() => {
@@ -415,9 +418,11 @@ export function CashierPanel() {
       toast.error("اكتب سعر العنصر");
       return;
     }
-    pushLine({ id: `custom:${crypto.randomUUID()}`, pid: null, custom: true, name, price, orig: price, qty, stock: 99999 });
+    const cost = Math.max(0, Number(customCost) || 0);
+    pushLine({ id: `custom:${crypto.randomUUID()}`, pid: null, custom: true, name, price, cost, orig: price, qty, stock: 99999 });
     setCustomName("");
     setCustomPrice(null);
+    setCustomCost(null);
     setCustomQty(1);
     setCustomOpen(false);
   };
@@ -445,7 +450,7 @@ export function CashierPanel() {
       const { data: saleId, error } = await supabase.rpc("pos_checkout", {
         _items: lines.map((l) =>
           l.custom
-            ? { product_id: null, name: l.name, price: l.price, quantity: l.qty }
+            ? { product_id: null, name: l.name, price: l.price, cost: l.cost ?? 0, quantity: l.qty }
             : { product_id: l.pid, variant_id: l.vid ?? null, quantity: l.qty },
         ),
         _customer_name: customer,
@@ -590,12 +595,19 @@ export function CashierPanel() {
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
               />
-              <div className="grid grid-cols-[1fr_90px] gap-2">
+              <div className="grid grid-cols-[1fr_1fr_80px] gap-2">
+                <NumberField
+                  value={customCost}
+                  allowEmpty
+                  placeholder="السعر الأساس"
+                  aria-label="السعر الأساس"
+                  onValueChange={setCustomCost}
+                />
                 <NumberField
                   value={customPrice}
                   allowEmpty
-                  placeholder="السعر (د.ع)"
-                  aria-label="السعر"
+                  placeholder="سعر البيع"
+                  aria-label="سعر البيع"
                   onValueChange={setCustomPrice}
                 />
                 <NumberField
