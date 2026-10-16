@@ -311,3 +311,10 @@
 a[href*="netlify.com"] {
     display: none !important;
 }
+
+/* إخفاء شارات إضافية (Netlify / Lovable) */
+a[href*="netlify"], a[href*="lovable.dev"], #lovable-badge,
+iframe[src*="netlify"], netlify-drawer, [id*="netlify" i], [class*="netlify" i] {
+    display: none !important;
+    visibility: hidden !important;
+}
