@@ -43,6 +43,13 @@
       "when": 1792169983636,
       "tag": "0005_item_returns",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792171750989,
+      "tag": "0006_custom_item_cost",
+      "breakpoints": true
     }
   ]
 }
