@@ -54,6 +54,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useCustomerNav } from "@/lib/customer-nav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FeaturedPicker } from "@/components/FeaturedPicker";
+import { ReturnButton } from "@/components/ReturnButton";
 import { Textarea } from "@/components/ui/textarea";
 import { Pagination } from "@/components/Pagination";
 import { AiSettingsPanel } from "@/components/AiSettingsPanel";
@@ -475,7 +476,7 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("*, order_items(id, product_name, quantity, unit_price, is_unavailable)")
+        .select("*, order_items(id, product_name, quantity, unit_price, is_unavailable, returned_qty)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -1013,6 +1014,14 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
                     >
                       {it["is_unavailable"] ? "إرجاع كمتوفر" : "غير متوفر"}
                     </Button>
+                    {!it["is_unavailable"] && (
+                      <ReturnButton
+                        source="online"
+                        itemId={String(it["id"])}
+                        quantity={Number(it["quantity"]) || 0}
+                        returned={Number(it["returned_qty"]) || 0}
+                      />
+                    )}
                   </li>
                 ))}
               </ul>
