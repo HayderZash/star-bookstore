@@ -29,7 +29,14 @@ type Notif = {
  * falling back to the in-page Notification API when no worker is available.
  */
 async function pushToDevice(title: string, body: string): Promise<void> {
-  if (typeof window === "undefined" || !("Notification" in window)) return;
+  if (typeof window === "undefined") return;
+  // Inside the Android app: use the native notification bridge.
+  const bridge = (window as unknown as { AndroidNotify?: { show: (t: string, b: string) => void } }).AndroidNotify;
+  if (bridge) {
+    try { bridge.show(title, body); } catch { /* ignore */ }
+    return;
+  }
+  if (!("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
   try {
     if ("serviceWorker" in navigator) {
