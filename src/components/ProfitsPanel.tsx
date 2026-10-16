@@ -25,7 +25,7 @@ const sourceLabel = (s: string) =>
     .map((p) => (p === "cashier" || p === "pos" ? "كاشير" : "طلب أونلاين"))
     .join(" + ");
 
-function reportHtml(rows: Row[], from: string, to: string, disc: number) {
+function reportHtml(rows: Row[], from: string, to: string, disc: number, ret: number) {
   const body = rows
     .map(
       (r, i) => `<tr><td>${i + 1}</td><td class="name">${r.product_name}</td>
@@ -64,6 +64,7 @@ function reportHtml(rows: Row[], from: string, to: string, disc: number) {
   <tfoot><tr><td colspan="3">المجموع</td><td>${t.qty}</td><td>—</td><td>—</td>
   <td>${money(t.cost)}</td><td>${money(t.sell)}</td><td>${money(t.profit)}</td></tr>
   <tr><td colspan="8">خصومات (خصم الفواتير والطلبات)</td><td>-${money(disc)}</td></tr>
+  <tr><td colspan="8">مرتجعات (مستبعدة من المبيعات أعلاه)</td><td>${money(ret)}</td></tr>
   <tr><td colspan="8">صافي الربح بعد الخصومات</td><td>${money(t.profit - disc)}</td></tr></tfoot>
   </table></body></html>`;
 }
@@ -104,6 +105,19 @@ export function ProfitsPanel() {
       return sum(a.data) + sum(b.data);
     },
   });
+  const returns = useQuery({
+    queryKey: ["returns-report", f, t],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("returns_report", {
+        ...(f ? { _from: f } : {}),
+        ...(t ? { _to: t } : {}),
+      });
+      if (error) throw error;
+      return (data ?? []) as { product_name: string; source: string; returned_qty: number; returned_value: number }[];
+    },
+  });
+  const retRows = returns.data ?? [];
+  const retValue = retRows.reduce((a, r) => a + Number(r.returned_value), 0);
   const disc = discounts.data ?? 0;
   const rows = report.data ?? [];
   const totals = rows.reduce(
@@ -120,7 +134,7 @@ export function ProfitsPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3 rounded-2xl border bg-card p-4">
         <PeriodPicker value={period} onChange={setPeriod} />
-        <Button variant="outline" onClick={() => { report.refetch(); discounts.refetch(); }}>
+        <Button variant="outline" onClick={() => { report.refetch(); discounts.refetch(); returns.refetch(); }}>
           تحديث
         </Button>
         <Button onClick={() => setPrinting(true)} disabled={!rows.length}>
@@ -129,12 +143,13 @@ export function ProfitsPanel() {
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-6">
         {[
           ["عدد القطع المباعة", String(totals.qty)],
           ["كلفة المواد", money(totals.cost)],
           ["مجموع البيع", money(totals.sell)],
           ["خصومات", `-${money(disc)}`],
+          ["مرتجعات (مستبعدة)", money(retValue)],
           ["صافي الربح", money(totals.profit - disc)],
         ].map(([label, value]) => (
           <div key={label} className="rounded-2xl border bg-card p-4">
@@ -191,6 +206,27 @@ export function ProfitsPanel() {
         </table>
       </div>
 
+      {retRows.length > 0 && (
+        <div className="overflow-x-auto rounded-2xl border border-destructive/30 bg-card">
+          <h3 className="p-3 text-sm font-semibold text-destructive">المرتجعات</h3>
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs text-muted-foreground">
+              <tr><th className="p-2 text-start">المادة</th><th className="p-2">المصدر</th><th className="p-2">العدد الراجع</th><th className="p-2">قيمة الراجع</th></tr>
+            </thead>
+            <tbody>
+              {retRows.map((r, i) => (
+                <tr key={i} className="border-t">
+                  <td className="p-2 text-start">{r.product_name}</td>
+                  <td className="p-2 text-center text-xs">{sourceLabel(r.source)}</td>
+                  <td className="p-2 text-center">{r.returned_qty}</td>
+                  <td className="p-2 text-center text-destructive">{money(r.returned_value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {printing && (
         <div className="space-y-2 rounded-2xl border bg-card p-4">
           <div className="flex gap-2">
@@ -213,7 +249,7 @@ export function ProfitsPanel() {
             ref={frameRef}
             title="profit-report"
             className="h-[60vh] w-full rounded-lg border bg-white"
-            srcDoc={reportHtml(rows, from, to, disc)}
+            srcDoc={reportHtml(rows, from, to, disc, retValue)}
           />
         </div>
       )}
