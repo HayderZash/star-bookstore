@@ -832,7 +832,7 @@ function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
         profit: a.profit + lineProfit - disc,
       };
     },
-    { count: 0, total: 0, disc: 0, profit: 0 },
+    { count: 0, total: 0, disc: 0, ret: 0, profit: 0 },
   );
 
   const remove = async (s: SavedSale) => {
@@ -855,11 +855,12 @@ function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
     <div className="space-y-3 rounded-2xl border bg-card p-4">
       <h3 className="text-base font-semibold">الفواتير المحفوظة — {periodLabel(period)}</h3>
       <PeriodPicker value={period} onChange={setPeriod} />
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {[
           ["عدد الفواتير", String(stats.count)],
           ["مجموع المبيعات", money(stats.total)],
           ["خصومات", `-${money(stats.disc)}`],
+          ["مرتجعات", `-${money(stats.ret)}`],
           ["صافي الربح", money(stats.profit)],
         ].map(([l, v]) => (
           <div key={l} className="rounded-xl border p-2">
