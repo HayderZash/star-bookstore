@@ -31,7 +31,10 @@ export function FeaturedPicker() {
     setBusy(id);
     const { error } = await supabase.from("products").update({ is_featured: v }).eq("id", id);
     setBusy(null);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     await qc.invalidateQueries({ queryKey: ["products"] });
     toast.success(v ? "أُضيف إلى المميز" : "أُزيل من المميز");
   };
