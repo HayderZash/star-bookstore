@@ -16,7 +16,7 @@ import {
   bannersQuery,
   categoriesQuery,
   popularProductIdsQuery,
-  productsQuery,
+  productsQuery, storeProductsQuery,
   settingsQuery,
 } from "@/lib/queries";
 import { rotationSeed, seededShuffle } from "@/lib/shuffle";
@@ -80,7 +80,7 @@ function Grid({ children }: { children: React.ReactNode }) {
 
 function Home() {
   const { lang, t } = useLang();
-  const products = useQuery(productsQuery);
+  const products = useQuery(storeProductsQuery);
   const categories = useQuery(categoriesQuery);
   const banners = useQuery(bannersQuery);
 

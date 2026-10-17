@@ -291,7 +291,7 @@ export function CashierPanel() {
   const typesOf = useMemo(() => {
     const m = new Map<string, ProductVariant[]>();
     for (const v of variants.data ?? []) {
-      if (!v.is_active) continue;
+      if (!v.is_active || v.is_out) continue;
       const arr = m.get(v.product_id) ?? [];
       arr.push(v);
       m.set(v.product_id, arr);

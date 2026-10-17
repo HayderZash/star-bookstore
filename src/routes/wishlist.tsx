@@ -4,7 +4,7 @@ import { Heart } from "lucide-react";
 
 import { ProductCard } from "@/components/ProductCard";
 import { useLang } from "@/lib/i18n";
-import { productsQuery } from "@/lib/queries";
+import { productsQuery, storeProductsQuery } from "@/lib/queries";
 import { useWishlist } from "@/lib/wishlist";
 
 export const Route = createFileRoute("/wishlist")({
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/wishlist")({
 function WishlistPage() {
   const { t } = useLang();
   const { ids } = useWishlist();
-  const { data } = useQuery(productsQuery);
+  const { data } = useQuery(storeProductsQuery);
   const items = (data ?? []).filter((p) => ids.includes(p.id));
 
   return (

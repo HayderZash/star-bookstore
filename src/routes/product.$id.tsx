@@ -20,7 +20,7 @@ import {
 import { useCart } from "@/lib/cart";
 import { discountPercent, effectivePrice, formatIQD } from "@/lib/format";
 import { localized, useLang } from "@/lib/i18n";
-import { categoriesQuery, governoratesQuery, productVariantsQuery, productsQuery } from "@/lib/queries";
+import { categoriesQuery, governoratesQuery, productVariantsQuery, productsQuery, storeProductsQuery } from "@/lib/queries";
 import { categoryChain } from "@/lib/category-path";
 import { getRecent, pushRecent } from "@/lib/recent";
 import { useWishlist } from "@/lib/wishlist";
@@ -45,7 +45,7 @@ function ProductPage() {
   const { lang, t } = useLang();
   const { add } = useCart();
   const wishlist = useWishlist();
-  const { data, isLoading } = useQuery(productsQuery);
+  const { data, isLoading } = useQuery(storeProductsQuery);
   const { data: govs } = useQuery(governoratesQuery);
   const { data: cats } = useQuery(categoriesQuery);
   const { data: allVariants } = useQuery(productVariantsQuery);
@@ -276,7 +276,7 @@ function ProductPage() {
                     <div className="text-xs font-medium text-muted-foreground">{label}</div>
                     <div className="flex flex-wrap gap-2">
                       {opts.map((v) => {
-                        const out = v.stock_qty <= 0 && product.stock_qty <= 0;
+                        const out = v.is_out || (v.stock_qty <= 0 && product.stock_qty <= 0);
                         const on = picked[g] === v.id;
                         return (
                           <button

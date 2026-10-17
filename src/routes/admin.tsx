@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ImagePlus, Layers, Loader2 as Loader2Icon } from "lucide-react";
+import { Eye, EyeOff, ImagePlus, Layers, Loader2 as Loader2Icon } from "lucide-react";
 import {
   ChevronDown,
   ClipboardList,
@@ -1381,6 +1381,23 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
                     }
                   }}
                 />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={p.is_hidden ? "إظهار في المتجر" : "إخفاء من المتجر"}
+                  title={p.is_hidden ? "مخفي من المتجر (كاشير فقط) — اضغط للإظهار" : "ظاهر في المتجر — اضغط للإخفاء"}
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from("products")
+                      .update({ is_hidden: !p.is_hidden })
+                      .eq("id", p.id);
+                    if (error) return void toast.error(error.message);
+                    toast.success(p.is_hidden ? "أصبح المنتج ظاهراً للزبائن" : "أُخفي المنتج من المتجر (يبقى في الكاشير)");
+                    invalidate(["products"]);
+                  }}
+                >
+                  {p.is_hidden ? <EyeOff className="size-4 text-destructive" /> : <Eye className="size-4" />}
+                </Button>
                 <QuickImageUpload
                   product={p}
                   onDone={() => invalidate(["products"])}

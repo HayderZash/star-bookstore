@@ -6,7 +6,7 @@ import { Pagination } from "@/components/Pagination";
 import { ProductCard } from "@/components/ProductCard";
 import { discountPercent } from "@/lib/format";
 import { useLang } from "@/lib/i18n";
-import { productsQuery } from "@/lib/queries";
+import { productsQuery, storeProductsQuery } from "@/lib/queries";
 
 const PER_PAGE = 30;
 
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/deals")({
 
 function DealsPage() {
   const { t } = useLang();
-  const { data: products } = useQuery(productsQuery);
+  const { data: products } = useQuery(storeProductsQuery);
 
   const [page, setPage] = useState(1);
 
