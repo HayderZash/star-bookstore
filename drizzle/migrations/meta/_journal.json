@@ -50,6 +50,13 @@
       "when": 1792171750989,
       "tag": "0006_custom_item_cost",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792265174955,
+      "tag": "0007_product_hidden_variant_out",
+      "breakpoints": true
     }
   ]
 }

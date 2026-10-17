@@ -465,6 +465,7 @@ export type Database = {
           group_en: string
           id: string
           is_active: boolean
+          is_out: boolean
           price_delta: number
           product_id: string
           sort_order: number
@@ -478,6 +479,7 @@ export type Database = {
           group_en?: string
           id?: string
           is_active?: boolean
+          is_out?: boolean
           price_delta?: number
           product_id: string
           sort_order?: number
@@ -491,6 +493,7 @@ export type Database = {
           group_en?: string
           id?: string
           is_active?: boolean
+          is_out?: boolean
           price_delta?: number
           product_id?: string
           sort_order?: number
@@ -523,6 +526,7 @@ export type Database = {
           image_url: string | null
           images: string[]
           is_featured: boolean
+          is_hidden: boolean
           name_ar: string
           name_en: string
           price: number
@@ -543,6 +547,7 @@ export type Database = {
           image_url?: string | null
           images?: string[]
           is_featured?: boolean
+          is_hidden?: boolean
           name_ar: string
           name_en?: string
           price?: number
@@ -563,6 +568,7 @@ export type Database = {
           image_url?: string | null
           images?: string[]
           is_featured?: boolean
+          is_hidden?: boolean
           name_ar?: string
           name_en?: string
           price?: number
