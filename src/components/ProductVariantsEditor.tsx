@@ -60,6 +60,15 @@ export function ProductVariantsEditor({ productId }: { productId: string }) {
     else void refresh();
   };
 
+  const toggleOut = async (id: string, out: boolean) => {
+    const { error } = await supabase.from("product_variants").update({ is_out: out }).eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(out ? "أصبح النوع نافذاً" : "أصبح النوع متوفراً");
+      void refresh();
+    }
+  };
+
   return (
     <div className="space-y-3 rounded-2xl border bg-card p-4 sm:col-span-2">
       <div className="text-sm font-bold">خيارات المنتج (لون، حجم، ...)</div>
@@ -84,9 +93,18 @@ export function ProductVariantsEditor({ productId }: { productId: string }) {
               )}
               <span className="text-muted-foreground">الكمية: {v.stock_qty}</span>
               <Button
+                size="sm"
+                variant={v.is_out ? "destructive" : "secondary"}
+                className="ms-auto h-7 rounded-full px-3 text-xs"
+                onClick={() => void toggleOut(v.id, !v.is_out)}
+                title="تبديل نافذ / متوفر"
+              >
+                {v.is_out ? "نافذ" : "متوفر"}
+              </Button>
+              <Button
                 variant="ghost"
                 size="icon"
-                className="ms-auto size-8 text-destructive"
+                className="size-8 text-destructive"
                 onClick={() => void removeRow(v.id)}
                 aria-label="حذف"
               >

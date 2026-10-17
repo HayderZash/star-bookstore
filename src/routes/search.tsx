@@ -25,7 +25,7 @@ import {
 import { effectivePrice, formatIQD } from "@/lib/format";
 import { localized, useLang } from "@/lib/i18n";
 import { CategoryIcon } from "@/lib/category-icons";
-import { categoriesQuery, productsQuery } from "@/lib/queries";
+import { categoriesQuery, productsQuery, storeProductsQuery } from "@/lib/queries";
 
 const PER_PAGE = 30;
 
@@ -54,7 +54,7 @@ function SearchPage() {
   const { q, cat } = Route.useSearch();
   const navigate = useNavigate();
   const { lang, t } = useLang();
-  const products = useQuery(productsQuery);
+  const products = useQuery(storeProductsQuery);
   const categories = useQuery(categoriesQuery);
 
   const [sort, setSort] = useState<SortKey>("newest");

@@ -4,7 +4,7 @@ import { ChevronLeft } from "lucide-react";
 
 import { CategoryIcon } from "@/lib/category-icons";
 import { localized, useLang } from "@/lib/i18n";
-import { categoriesQuery, productsQuery, settingsQuery } from "@/lib/queries";
+import { categoriesQuery, productsQuery, storeProductsQuery, settingsQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/categories")({
 function CategoriesPage() {
   const { lang, t } = useLang();
   const categories = useQuery(categoriesQuery);
-  const products = useQuery(productsQuery);
+  const products = useQuery(storeProductsQuery);
   const settings = useQuery(settingsQuery);
 
   const all = categories.data ?? [];

@@ -23,6 +23,8 @@ export type Product = {
   /** Cost price (admin only, never shown to customers). */
   cost_price: number;
   barcode: string | null;
+  /** Hidden from the customer store (still sold at the cashier). */
+  is_hidden: boolean;
 };
 
 
@@ -47,7 +49,7 @@ export type Category = {
 };
 
 const PRODUCT_COLS =
-  "id, sku, name_ar, name_en, description_ar, description_en, price, discount_price, cost_price, barcode, category_id, image_url, catalog_pdf_url, stock_qty, is_featured, images, deal_ends_at, created_at";
+  "id, sku, name_ar, name_en, description_ar, description_en, price, discount_price, cost_price, barcode, category_id, image_url, catalog_pdf_url, stock_qty, is_featured, images, deal_ends_at, created_at, is_hidden";
 
 const PAGE = 1000;
 
@@ -77,6 +79,12 @@ export const productsQuery = queryOptions({
     }
     return all;
   },
+});
+
+/** Products visible in the customer store (hidden ones are cashier-only). */
+export const storeProductsQuery = queryOptions({
+  ...productsQuery,
+  select: (rows: Product[]) => rows.filter((p) => !p.is_hidden),
 });
 
 /** Product ids ordered by how often customers bought them (aggregate only). */
@@ -266,11 +274,13 @@ export type ProductVariant = {
   price_delta: number;
   stock_qty: number;
   is_active: boolean;
+  /** Manually marked out of stock by the admin. */
+  is_out: boolean;
   sort_order: number;
 };
 
 const VARIANT_COLS =
-  "id, product_id, group_ar, group_en, value_ar, value_en, price_delta, stock_qty, is_active, sort_order";
+  "id, product_id, group_ar, group_en, value_ar, value_en, price_delta, stock_qty, is_active, is_out, sort_order";
 
 export const productVariantsQuery = queryOptions({
   queryKey: ["product_variants"],
