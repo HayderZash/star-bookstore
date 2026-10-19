@@ -173,7 +173,7 @@ export function OrderAdminTools({
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(false);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
-  const showProfit = ["preparing", "shipped", "completed"].includes(String(order["status"]));
+  const showProfit = true;
 
   return (
     <div className="space-y-3">
