@@ -900,6 +900,18 @@ function SavedSales({ onOpen }: { onOpen: (r: Receipt) => void }) {
                 {s.pos_sale_items?.length ?? 0} مادة
               </span>
               <span className="ms-auto font-bold text-primary">{money(s.total_amount)}</span>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                الربح:{" "}
+                {money(
+                  (s.pos_sale_items ?? []).reduce(
+                    (p, i) =>
+                      p +
+                      (Number(i.unit_price) - (Number(i.cost_price) || 0)) *
+                        (Number(i.quantity) - (Number(i.returned_qty) || 0)),
+                    0,
+                  ) - (Number(s.discount_amount) || 0),
+                )}
+              </span>
               <Button
                 size="sm"
                 variant="outline"
