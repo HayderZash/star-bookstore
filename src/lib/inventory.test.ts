@@ -35,4 +35,25 @@ describe("inventory percentages", () => {
   test("negative stock is not counted as inventory", () => {
     assert.equal(inventorySummary([{ stock_qty: -2, category_id: null }]).totalUnits, 0);
   });
+  test("hidden products are excluded from totals, availability and category percentages", () => {
+    const summary = inventorySummary([
+      { stock_qty: 2, category_id: "child", is_hidden: false },
+      { stock_qty: 0, category_id: "root", is_hidden: false },
+      { stock_qty: 98, category_id: "child", is_hidden: true },
+      { stock_qty: 50, category_id: null, is_hidden: true },
+    ], [{ id: "root", parent_id: null }, { id: "child", parent_id: "root" }]);
+    assert.equal(summary.totalUnits, 2);
+    assert.equal(summary.productCount, 2);
+    assert.equal(summary.availabilityPercent, 50);
+    assert.equal(summary.categoryUnits.get("root"), 2);
+    assert.equal(summary.categoryUnits.get("child"), 2);
+    assert.equal(summary.generalUnits, 0);
+    assert.equal(inventoryPercent(2, summary.totalUnits), 100);
+  });
+  test("inventory with only hidden products is empty for percentage calculations", () => {
+    const summary = inventorySummary([{ stock_qty: 10, category_id: null, is_hidden: true }]);
+    assert.equal(summary.totalUnits, 0);
+    assert.equal(summary.productCount, 0);
+    assert.equal(summary.availabilityPercent, 0);
+  });
 });
