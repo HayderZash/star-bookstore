@@ -27,6 +27,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { NumberField } from "@/components/NumberField";
+import { InventoryOverview } from "@/components/InventoryOverview";
+import { formatInventoryPercent, inventoryPercent, inventorySummary } from "@/lib/inventory";
 
 import { announceDeal, createCoupon, notifyRestock } from "@/lib/admin.functions";
 import { BulkDeleteProducts } from "@/components/BulkDeleteProducts";
@@ -90,6 +92,8 @@ export const Route = createFileRoute("/admin")({
       { name: "robots", content: "noindex" },
       { property: "og:title", content: "لوحة الإدارة | مكتبة النجم" },
       { property: "og:description", content: "إدارة المتجر بالكامل من مكان واحد." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => <AdminPage />,
@@ -657,6 +661,7 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
 
   const needle = q.trim().toLowerCase();
   const allProducts = products.data ?? [];
+  const inventory = inventorySummary(allProducts, categories.data ?? []);
 
   const matchOrder = (o: Record<string, any>) =>
     !needle ||
@@ -1105,6 +1110,7 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
 
         {/* PRODUCTS */}
         <TabsContent value="products" className="space-y-4">
+          {products.data && <InventoryOverview products={allProducts} />}
           <ProductsExcel
             categories={categories.data ?? []}
             products={(products.data ?? []) as never}
@@ -1348,7 +1354,12 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
                   {p.image_url && <img src={p.image_url} alt="" className="h-full w-full object-cover" />}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{p.name_ar}</p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <p className="min-w-0 truncate text-sm font-semibold">{p.name_ar}</p>
+                    <span dir="ltr" title="حصة المنتج من إجمالي قطع المخزون" className="shrink-0 text-xs font-semibold text-primary tabular-nums">
+                      {formatInventoryPercent(inventoryPercent(p.stock_qty, inventory.totalUnits))}
+                    </span>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {formatIQD(Number(p.price), lang)} · مخزون {p.stock_qty}
                   </p>
@@ -1514,7 +1525,7 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
             </Button>
           </div>
           </Panel>
-          <Panel id="cat-general" title="القسم العام" desc="صورة وأيقونة قسم «العام» الذي يجمع المنتجات بلا قسم">
+          <Panel id="cat-general" title={`القسم العام · ${formatInventoryPercent(inventoryPercent(inventory.generalUnits, inventory.totalUnits))}`} desc="صورة وأيقونة قسم «العام» الذي يجمع المنتجات بلا قسم">
             <div className="grid gap-4 sm:grid-cols-2">
               <FileField
                 label="صورة القسم العام"
@@ -1565,6 +1576,9 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
                 <span className="min-w-[8rem] flex-1 text-sm font-medium">
                   {c.parent_id ? "— " : ""}
                   {c.name_ar}
+                  <span dir="ltr" title="حصة القسم وأقسامه الفرعية من إجمالي قطع المخزون" className="ms-2 inline-block text-xs font-semibold text-primary tabular-nums">
+                    {formatInventoryPercent(inventoryPercent(inventory.categoryUnits.get(c.id) ?? 0, inventory.totalUnits))}
+                  </span>
                 </span>
                 <div className="w-44">
                   <IconPicker

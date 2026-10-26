@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberField } from "@/components/NumberField";
+import { InventoryOverview } from "@/components/InventoryOverview";
 import { PeriodPicker, defaultPeriod, periodBounds, periodLabel, type Period } from "@/components/PeriodPicker";
 import { ReturnButton } from "@/components/ReturnButton";
 import { supabase } from "@/integrations/supabase/client";
@@ -512,6 +513,7 @@ export function CashierPanel() {
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
         {/* Product catalogue */}
         <section className="space-y-3 rounded-2xl border bg-card p-3 sm:p-4">
+          {products.data && <InventoryOverview products={products.data} />}
           <div className="relative">
             <ScanBarcode className="pointer-events-none absolute top-1/2 start-3 size-5 -translate-y-1/2 text-primary" />
             <Input
