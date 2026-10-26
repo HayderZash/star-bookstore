@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep inventory aggregation in the browser-safe `src/lib/inventory.ts` shared by administration and cashier; count main product stock once and roll category stock through ancestors to prevent variant double-counting and inconsistent percentages.

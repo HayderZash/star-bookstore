@@ -33,6 +33,8 @@ export const Route = createFileRoute("/")({
           "تسوق الكتب والقرطاسية واللوازم المدرسية والمكتبية وأدوات الرسم مع توصيل لكل محافظات العراق.",
       },
       { property: "og:title", content: "مكتبة النجم | تسوق أونلاين في العراق" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content: "كتب، قرطاسية، لوازم مدرسية ومكتبية مع توصيل لجميع المحافظات.",
