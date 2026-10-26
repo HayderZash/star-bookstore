@@ -1356,9 +1356,9 @@ export function AdminPage({ ordersOnly = false, productsOnly = false }: { orders
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <p className="min-w-0 truncate text-sm font-semibold">{p.name_ar}</p>
-                    <span dir="ltr" title="حصة المنتج من إجمالي قطع المخزون" className="shrink-0 text-xs font-semibold text-primary tabular-nums">
+                    {!p.is_hidden && <span dir="ltr" title="حصة المنتج من إجمالي قطع المخزون" className="shrink-0 text-xs font-semibold text-primary tabular-nums">
                       {formatInventoryPercent(inventoryPercent(p.stock_qty, inventory.totalUnits))}
-                    </span>
+                    </span>}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {formatIQD(Number(p.price), lang)} · مخزون {p.stock_qty}

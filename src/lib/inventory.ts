@@ -1,4 +1,4 @@
-type StockProduct = { stock_qty: number; category_id: string | null };
+type StockProduct = { stock_qty: number; category_id: string | null; is_hidden?: boolean };
 type StockCategory = { id: string; parent_id: string | null };
 
 export function stockUnits(qty: number) {
@@ -15,12 +15,13 @@ export function formatInventoryPercent(percent: number) {
 
 /** Count main stock once; variant quantities are allocations, not extra units. */
 export function inventorySummary(products: readonly StockProduct[], categories: readonly StockCategory[] = []) {
-  const totalUnits = products.reduce((sum, p) => sum + stockUnits(p.stock_qty), 0);
-  const availableProducts = products.filter((p) => stockUnits(p.stock_qty) > 0).length;
+  const visibleProducts = products.filter((p) => !p.is_hidden);
+  const totalUnits = visibleProducts.reduce((sum, p) => sum + stockUnits(p.stock_qty), 0);
+  const availableProducts = visibleProducts.filter((p) => stockUnits(p.stock_qty) > 0).length;
   const categoryUnits = new Map<string, number>();
   const parents = new Map(categories.map((c) => [c.id, c.parent_id]));
   let generalUnits = 0;
-  for (const product of products) {
+  for (const product of visibleProducts) {
     const units = stockUnits(product.stock_qty);
     if (!product.category_id) generalUnits += units;
     let id = product.category_id;
@@ -34,7 +35,8 @@ export function inventorySummary(products: readonly StockProduct[], categories: 
   return {
     totalUnits,
     availableProducts,
-    availabilityPercent: inventoryPercent(availableProducts, products.length),
+    productCount: visibleProducts.length,
+    availabilityPercent: inventoryPercent(availableProducts, visibleProducts.length),
     categoryUnits,
     generalUnits,
   };
