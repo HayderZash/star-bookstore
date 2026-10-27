@@ -332,6 +332,15 @@ export function ProductsExcel({
           <Download className="size-4" />
           تنزيل نموذج فارغ
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => exportInventory(categories, products)}
+          disabled={!products.length}
+        >
+          <FileSpreadsheet className="size-4" />
+          جرد المتوفر (Excel)
+        </Button>
         <Button type="button" variant="outline" onClick={exportCurrent} disabled={!products.length}>
           <FileSpreadsheet className="size-4" />
           تصدير المنتجات الحالية
