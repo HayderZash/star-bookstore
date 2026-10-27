@@ -79,6 +79,62 @@ function download(ws: XLSX.WorkSheet, filename: string) {
   downloadWorkbook(wb, filename);
 }
 
+/** Sheet for stocktaking (جرد): available products with cost price and quantity only. */
+const INVENTORY_HEADERS = [
+  "القسم",
+  "الرمز",
+  "الباركود",
+  "الاسم بالعربية",
+  "السعر الأساس (الكلفة)",
+  "سعر البيع",
+  "الكمية",
+] as const;
+
+function exportInventory(categories: Category[], products: Product[]) {
+  const available = products.filter((p) => p.stock_qty > 0);
+  if (!available.length) {
+    toast.error("لا توجد منتجات متوفرة (كمية أكبر من صفر)");
+    return;
+  }
+  const byId = new Map(categories.map((c) => [c.id, c.name_ar]));
+  const rows = available
+    .slice()
+    .sort(
+      (a, b) =>
+        ((byId.get(a.category_id ?? "") ?? "") as string).localeCompare(
+          (byId.get(b.category_id ?? "") ?? "") as string,
+          "ar",
+        ) || a.name_ar.localeCompare(b.name_ar, "ar"),
+    )
+    .map((p) => [
+      (p.category_id && byId.get(p.category_id)) || "",
+      p.sku,
+      p.barcode ?? "",
+      p.name_ar,
+      p.cost_price ?? 0,
+      p.price,
+      p.stock_qty,
+    ]);
+  const totalCost = rows.reduce((s, r) => s + Number(r[4]) * Number(r[6]), 0);
+  const totalSell = rows.reduce((s, r) => s + Number(r[5]) * Number(r[6]), 0);
+  const totalQty = rows.reduce((s, r) => s + Number(r[6]), 0);
+
+  const ws = XLSX.utils.aoa_to_sheet([
+    ["جرد المخزون — المنتجات المتوفرة"],
+    [`تاريخ الجرد: ${new Date().toLocaleDateString("ar-IQ")}`],
+    [],
+    [...INVENTORY_HEADERS],
+    ...rows,
+    [],
+    ["الإجماليات", "", "", `عدد المنتجات: ${rows.length}`, "قيمة المخزون بالكلفة:", totalCost, "قيمة المخزون بالبيع:", totalSell, "مجموع الكميات:", totalQty],
+  ]);
+  ws["!cols"] = [{ wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 34 }, { wch: 18 }, { wch: 14 }, { wch: 10 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "inventory");
+  downloadWorkbook(wb, `najm-inventory-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  toast.success(`تم تصدير جرد ${rows.length} منتجاً متوفراً`);
+}
+
 function truthy(v: unknown) {
   const s = String(v ?? "").trim().toLowerCase();
   return ["1", "true", "yes", "نعم", "مميز"].includes(s);
