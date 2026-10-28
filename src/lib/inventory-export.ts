@@ -108,7 +108,8 @@ export async function downloadInventoryPdf(rows: PreparedRow[], date: Date) {
   const widths = [24, 27, 22, 28, 47, 24, 24, 14, 28, 39];
   const cellText = (text: string, right: number, top: number, width: number, maxLines = 3) => {
     const rtl = /[\u0600-\u06ff]/.test(text);
-    pdf.setR2L(rtl);
+    // jsPDF shapes Arabic automatically; reversing it again breaks the joined glyphs.
+    pdf.setR2L(false);
     const lines = pdf.splitTextToSize(text, width - 3) as string[];
     const visible = lines.slice(0, maxLines);
     if (lines.length > maxLines) visible[maxLines - 1] = `${visible[maxLines - 1] ?? ""}…`;
