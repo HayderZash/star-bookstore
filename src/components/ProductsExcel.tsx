@@ -1,9 +1,10 @@
-import { Download, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
 import { downloadWorkbook } from "@/lib/xlsx-download";
+import { inventoryReportRows } from "@/lib/inventory-report";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -26,6 +27,7 @@ type Product = {
   stock_qty: number;
   is_featured: boolean;
   image_url: string | null;
+  images?: string[] | null;
   catalog_pdf_url: string | null;
   category_id: string | null;
 };
@@ -79,62 +81,6 @@ function download(ws: XLSX.WorkSheet, filename: string) {
   downloadWorkbook(wb, filename);
 }
 
-/** Sheet for stocktaking (جرد): available products with cost price and quantity only. */
-const INVENTORY_HEADERS = [
-  "القسم",
-  "الرمز",
-  "الباركود",
-  "الاسم بالعربية",
-  "السعر الأساس (الكلفة)",
-  "سعر البيع",
-  "الكمية",
-] as const;
-
-function exportInventory(categories: Category[], products: Product[]) {
-  const available = products.filter((p) => p.stock_qty > 0);
-  if (!available.length) {
-    toast.error("لا توجد منتجات متوفرة (كمية أكبر من صفر)");
-    return;
-  }
-  const byId = new Map(categories.map((c) => [c.id, c.name_ar]));
-  const rows = available
-    .slice()
-    .sort(
-      (a, b) =>
-        ((byId.get(a.category_id ?? "") ?? "") as string).localeCompare(
-          (byId.get(b.category_id ?? "") ?? "") as string,
-          "ar",
-        ) || a.name_ar.localeCompare(b.name_ar, "ar"),
-    )
-    .map((p) => [
-      (p.category_id && byId.get(p.category_id)) || "",
-      p.sku,
-      p.barcode ?? "",
-      p.name_ar,
-      p.cost_price ?? 0,
-      p.price,
-      p.stock_qty,
-    ]);
-  const totalCost = rows.reduce((s, r) => s + Number(r[4]) * Number(r[6]), 0);
-  const totalSell = rows.reduce((s, r) => s + Number(r[5]) * Number(r[6]), 0);
-  const totalQty = rows.reduce((s, r) => s + Number(r[6]), 0);
-
-  const ws = XLSX.utils.aoa_to_sheet([
-    ["جرد المخزون — المنتجات المتوفرة"],
-    [`تاريخ الجرد: ${new Date().toLocaleDateString("ar-IQ")}`],
-    [],
-    [...INVENTORY_HEADERS],
-    ...rows,
-    [],
-    ["الإجماليات", "", "", `عدد المنتجات: ${rows.length}`, "قيمة المخزون بالكلفة:", totalCost, "قيمة المخزون بالبيع:", totalSell, "مجموع الكميات:", totalQty],
-  ]);
-  ws["!cols"] = [{ wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 34 }, { wch: 18 }, { wch: 14 }, { wch: 10 }];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "inventory");
-  downloadWorkbook(wb, `najm-inventory-${new Date().toISOString().slice(0, 10)}.xlsx`);
-  toast.success(`تم تصدير جرد ${rows.length} منتجاً متوفراً`);
-}
-
 function truthy(v: unknown) {
   const s = String(v ?? "").trim().toLowerCase();
   return ["1", "true", "yes", "نعم", "مميز"].includes(s);
@@ -155,11 +101,36 @@ export function ProductsExcel({
   onDone: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
+  const [exportProgress, setExportProgress] = useState(0);
   const [progress, setProgress] = useState<{ phase: string; done: number; total: number } | null>(
     null,
   );
   const inputRef = useRef<HTMLInputElement>(null);
 
+
+  const exportInventory = async (format: "excel" | "pdf") => {
+    const rows = inventoryReportRows(categories, products);
+    if (!rows.length) {
+      toast.error("لا توجد منتجات متوفرة (كمية أكبر من صفر)");
+      return;
+    }
+    setExporting(format);
+    setExportProgress(0);
+    try {
+      const { prepareInventoryPhotos, downloadInventoryExcel, downloadInventoryPdf } = await import("@/lib/inventory-export");
+      const prepared = await prepareInventoryPhotos(rows, setExportProgress);
+      const date = new Date();
+      if (format === "excel") await downloadInventoryExcel(prepared.rows, date);
+      else await downloadInventoryPdf(prepared.rows, date);
+      if (prepared.failedPhotos) toast.warning(`تم تنزيل الجرد، لكن تعذر تحميل ${prepared.failedPhotos} صورة. أعد المحاولة لإدراجها.`);
+      else toast.success(`تم تنزيل جرد ${rows.length} منتجاً بصيغة ${format === "excel" ? "Excel" : "PDF"}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تنزيل تقرير الجرد");
+    } finally {
+      setExporting(null);
+    }
+  };
 
   const exportTemplate = () => {
     const example = {
@@ -218,9 +189,11 @@ export function ProductsExcel({
     setProgress({ phase: "قراءة الملف…", done: 0, total: 0 });
     try {
       const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
-      const sheetName = wb.SheetNames.find((n) => n.toLowerCase() === "products") ?? wb.SheetNames[0]!;
+      const sheetName = wb.SheetNames.find((n) => n.toLowerCase() === "products") ?? wb.SheetNames[0];
+      const sheet = sheetName ? wb.Sheets[sheetName] : undefined;
+      if (!sheet) throw new Error("الملف لا يحتوي على ورقة منتجات");
       setProgress({ phase: "تحليل الصفوف…", done: 0, total: 0 });
-      const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sheetName]!, {
+      const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
         defval: "",
       });
 
@@ -335,17 +308,21 @@ export function ProductsExcel({
         <Button
           type="button"
           variant="outline"
-          onClick={() => exportInventory(categories, products)}
-          disabled={!products.length}
+          onClick={() => void exportInventory("excel")}
+          disabled={!products.length || busy || exporting !== null}
         >
-          <FileSpreadsheet className="size-4" />
+          {exporting === "excel" ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
           جرد المتوفر (Excel)
+        </Button>
+        <Button type="button" variant="outline" onClick={() => void exportInventory("pdf")} disabled={!products.length || busy || exporting !== null}>
+          {exporting === "pdf" ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
+          جرد المتوفر (PDF)
         </Button>
         <Button type="button" variant="outline" onClick={exportCurrent} disabled={!products.length}>
           <FileSpreadsheet className="size-4" />
           تصدير المنتجات الحالية
         </Button>
-        <Button type="button" disabled={busy} asChild>
+        <Button type="button" disabled={busy || exporting !== null} asChild>
           <label className={busy ? "pointer-events-none opacity-70" : "cursor-pointer"}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
             {busy ? "جارٍ الرفع…" : "رفع ملف Excel"}
@@ -363,6 +340,12 @@ export function ProductsExcel({
           </label>
         </Button>
       </div>
+      {exporting && (
+        <div className="space-y-2" role="status">
+          <p className="text-xs text-muted-foreground">جارٍ تجهيز تقرير الجرد… {exportProgress} / {products.filter((product) => product.stock_qty > 0).length}</p>
+          <Progress value={exportProgress / Math.max(1, products.filter((product) => product.stock_qty > 0).length) * 100} />
+        </div>
+      )}
       {progress && (
         <div className="space-y-2 rounded-xl border bg-muted/40 p-3">
           <div className="flex items-center justify-between text-xs font-semibold">

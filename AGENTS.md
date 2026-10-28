@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Keep inventory aggregation in the browser-safe `src/lib/inventory.ts` shared by administration and cashier; count main product stock once and roll category stock through ancestors to prevent variant double-counting and inconsistent percentages.
+- Keep stocktaking row calculations in browser-safe `src/lib/inventory-report.ts`; both ExcelJS and jsPDF exports consume those rows through dynamically loaded browser libraries so embedded photos and totals agree without increasing initial page load.
